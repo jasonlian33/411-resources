@@ -18,6 +18,19 @@ configure_logger(logger)
 #
 ####################################################
 class Boxer:
+    """
+    A class to manage individual boxers.
+
+    Attributes:
+        id (int): The boxer's id
+        name (str): The name of the boxer
+        weight (int): The weight of the boxer
+        height (int): The height of the boxer
+        reach (float): The reach of the boxer
+        age (int): The age of the boxer
+        weight_class (str): The weight class of the boxer
+
+    """
     id: int
     name: str
     weight: int
@@ -27,6 +40,9 @@ class Boxer:
     weight_class: str = None
 
     def __post_init__(self):
+        """
+        Automatically initializes the boxer's weight class based on their weight.
+        """
         self.weight_class = get_weight_class(self.weight)  # Automatically assign weight class
 
 
