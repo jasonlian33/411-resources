@@ -13,9 +13,25 @@ configure_logger(logger)
 
 class RingModel:
     def __init__(self):
+        """
+        Args: 
+        
+        
+        
+        """
         self.ring: List[Boxer] = []
 
     def fight(self) -> str:
+        """
+        Function that lets two fighters fight
+
+        Returns:
+            A String on the boxer that won the fight
+            
+        Raises:
+            ValueError if there are less than two boxers
+        
+        """
         if len(self.ring) < 2:
             raise ValueError("There must be two boxers to start a fight.")
 
@@ -46,11 +62,25 @@ class RingModel:
         return winner.name
 
     def clear_ring(self):
+        """
+        Function that clears the ring of the boxers
+        """
         if not self.ring:
             return
         self.ring.clear()
 
     def enter_ring(self, boxer: Boxer):
+        """
+        Function that allows boxer to enter the ring
+
+        Args:
+            boxer: Boxer - 
+
+        Raises:
+            TypeError if the boxer is not of the right type
+            ValueError if the ring is full (more than two boxers)        
+        
+        """
         if not isinstance(boxer, Boxer):
             raise TypeError(f"Invalid type: Expected 'Boxer', got '{type(boxer).__name__}'")
 
@@ -60,6 +90,13 @@ class RingModel:
         self.ring.append(boxer)
 
     def get_boxers(self) -> List[Boxer]:
+        """
+        Function that get the boxers inside the ring
+
+        Returns:
+            The boxers inside the rign
+        
+        """
         if not self.ring:
             pass
         else:
@@ -69,6 +106,16 @@ class RingModel:
 
     def get_fighting_skill(self, boxer: Boxer) -> float:
         # Arbitrary calculations
+        """
+        Function that obtains the boxer's skills
+
+        Args:
+            boxer: Boxer - 
+
+        Returns:
+            The skill of the boxer
+        
+        """
         age_modifier = -1 if boxer.age < 25 else (-2 if boxer.age > 35 else 0)
         skill = (boxer.weight * len(boxer.name)) + (boxer.reach / 10) + age_modifier
 
