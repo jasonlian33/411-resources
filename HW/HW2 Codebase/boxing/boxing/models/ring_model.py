@@ -38,7 +38,10 @@ class RingModel:
             ValueError if there are less than two boxers
         
         """
+        logger.info("Receieved request to start the fight")
+
         if len(self.ring) < 2:
+            logger.error("Invalid Value: The ring has less than two boxers")
             raise ValueError("There must be two boxers to start a fight.")
 
         boxer_1, boxer_2 = self.get_boxers()
@@ -65,6 +68,7 @@ class RingModel:
 
         self.clear_ring()
 
+        logger.info(f"Succesfully retrieved winner of the fight:{winner.name}")
         return winner.name
 
     def clear_ring(self):
@@ -73,6 +77,7 @@ class RingModel:
 
         If the ring is already cleared then it returns other calls the clear() function
         """
+        logger.info("Clears the ring of the boxers")
         if not self.ring:
             return
         self.ring.clear()
@@ -89,13 +94,17 @@ class RingModel:
             ValueError if the ring is full (more than two boxers)        
         
         """
+        logger.info("Boxers entering the ring")
         if not isinstance(boxer, Boxer):
+            logger.error("Invalid type: Boxer is not a valid Boxer instance")
             raise TypeError(f"Invalid type: Expected 'Boxer', got '{type(boxer).__name__}'")
 
         if len(self.ring) >= 2:
+            logger.error("Invalid value: More than two boxers in the ring")
             raise ValueError("Ring is full, cannot add more boxers.")
 
         self.ring.append(boxer)
+        logger.info(f"Succesfully added boxer with ID {boxer.id} to the ring.")
 
     def get_boxers(self) -> List[Boxer]:
         """
@@ -105,6 +114,7 @@ class RingModel:
             self.ring: The boxers (in form of a list) inside the ring
         
         """
+        logger.info("Gets the boxer inside the ring")
         if not self.ring:
             pass
         else:
@@ -124,6 +134,7 @@ class RingModel:
             skill: The skill of the boxer
         
         """
+        logger.info("Obtaining the boxers skills.")
         age_modifier = -1 if boxer.age < 25 else (-2 if boxer.age > 35 else 0)
         skill = (boxer.weight * len(boxer.name)) + (boxer.reach / 10) + age_modifier
 
