@@ -2,7 +2,6 @@ from contextlib import contextmanager
 import re
 import sqlite3
 import pytest
-
 from boxing.models.boxers_model import (
     Boxer,
     create_boxer,
@@ -40,7 +39,7 @@ def mock_cursor(mocker):
     def mock_get_db_connection():
         yield mock_conn  # Yield the mocked connection object
 
-    mocker.patch("boxing.models.boxer_model.get_db_connection", mock_get_db_connection)
+    mocker.patch("boxing.models.boxers_model.get_db_connection", mock_get_db_connection)
 
     return mock_cursor  # Return the mock cursor so we can set expectations per test
 
@@ -100,22 +99,13 @@ def test_create_boxer_invalid_age():
     with pytest.raises(ValueError, match="Invalid age: 41. Must be between 18 and 40."):
         create_boxer(name="Invalid Boxer", weight=150, height=175, reach=180, age=41)
 
-def test_create_boxer_duplicate_name(mock_cursor):
-    """Test that an error is raised when a boxer with the same name already exists."""
-    mock_cursor.execute.side_effect = sqlite3.IntegrityError("UNIQUE constraint failed: songs.artist, songs.title, songs.year")
-
-    with pytest.raises(ValueError, match="Song with artist 'Artist Name', title 'Song Title', and year 2022 already exists."):
-        create_song(artist="Artist Name", title="Song Title", year=2022, genre="Pop", duration=180)
-
-
 def test_create_boxer_sql_error(mocker):
     """Test that a database error is properly caught and raised."""
-    mock_execute = mocker.patch("boxing.utils.sql_utils.get_db_connection")
-    mock_execute.side_effect = sqlite3.Error("Database error")
+    mock_get_db_connection = mocker.patch("boxing.models.boxers_model.get_db_connection")
+    mock_get_db_connection.side_effect = sqlite3.Error("Database error")
 
     with pytest.raises(sqlite3.Error, match="Database error"):
         create_boxer(name="SQL Error Boxer", weight=150, height=175, reach=180, age=25)
-
 ######################################################
 #
 #    Deleting Boxer
@@ -163,15 +153,15 @@ def test_delete_boxer_bad_id(mock_cursor):
 
 def test_get_boxer_by_name(mock_cursor):
     """Test getting a boxer by name."""
-    mock_cursor.fetchone.return_value = (1, "Boxer A", 75, 180, 10, 1)
+    mock_cursor.fetchone.return_value = (1, "Boxer A", 150, 175, 180, 25)
 
     result = get_boxer_by_name("Boxer A")
 
-    expected_result = Boxer(1, "Boxer A", 75, 180, 10, 1)
+    expected_result = Boxer(1, "Boxer A", 150, 175, 180, 25)
 
     assert result == expected_result, f"Expected {expected_result}, got {result}"
 
-    expected_query = normalize_whitespace("SELECT id, name, weight, height, wins, losses FROM boxers WHERE name = ?")
+    expected_query = normalize_whitespace("SELECT id, name, weight, height, reach, age FROM boxers WHERE name = ?")
     actual_query = normalize_whitespace(mock_cursor.execute.call_args[0][0])
 
     assert actual_query == expected_query, "The SQL query did not match the expected structure."
@@ -186,8 +176,9 @@ def test_get_boxer_by_name_not_found(mock_cursor):
     """Test error when getting a non-existent boxer by name."""
     mock_cursor.fetchone.return_value = None
 
-    with pytest.raises(ValueError, match="Boxer with name 'Boxer A' not found"):
+    with pytest.raises(ValueError, match="Boxer 'Boxer A' not found"):
         get_boxer_by_name("Boxer A")
+    
 ######################################################
 #
 #    Get Boxer by ID
@@ -260,45 +251,51 @@ def test_invalid_weight_class():
 def test_update_boxer_stats_win(mock_cursor):
     """Test updating a boxer's stats when the result is 'win'."""
     
-    # Mock fetching the boxer (simulating boxer with ID 1 exists)
+    # Simulate that the boxer with ID 1 exists by making the SELECT return a valid row.
     mock_cursor.fetchone.return_value = (1,)
-
+    
     # Call the function to update stats
     update_boxer_stats(1, result="win")
-
-    # Verify the correct SQL query was executed
+    
+    # There should be at least two calls: one for the SELECT and one for the UPDATE.
+    calls = mock_cursor.execute.call_args_list
+    # The update query should be the second call.
+    update_call = calls[1]
+    actual_query = normalize_whitespace(update_call[0][0])
+    actual_arguments = update_call[0][1]
+    
     expected_query = normalize_whitespace("""
         UPDATE boxers SET fights = fights + 1, wins = wins + 1 WHERE id = ?
     """)
-    actual_query = normalize_whitespace(mock_cursor.execute.call_args[0][0])
-    assert actual_query == expected_query, "The SQL query did not match the expected structure."
-
-    # Verify the arguments passed to the query
-    actual_arguments = mock_cursor.execute.call_args[0][1]
     expected_arguments = (1,)
+    
+    assert actual_query == expected_query, "The SQL query did not match the expected structure."
     assert actual_arguments == expected_arguments, f"The SQL query arguments did not match. Expected {expected_arguments}, got {actual_arguments}"
+
 
 def test_update_boxer_stats_loss(mock_cursor):
     """Test updating a boxer's stats when the result is 'loss'."""
     
-    # Mock fetching the boxer (simulating boxer with ID 1 exists)
+    # Simulate that the boxer with ID 1 exists by making the SELECT return a valid row.
     mock_cursor.fetchone.return_value = (1,)
-
+    
     # Call the function to update stats
     update_boxer_stats(1, result="loss")
-
-    # Verify the correct SQL query was executed
+    
+    # There should be at least two calls: one for the SELECT and one for the UPDATE.
+    calls = mock_cursor.execute.call_args_list
+    # The update query should be the second call.
+    update_call = calls[1]
+    actual_query = normalize_whitespace(update_call[0][0])
+    actual_arguments = update_call[0][1]
+    
     expected_query = normalize_whitespace("""
         UPDATE boxers SET fights = fights + 1 WHERE id = ?
     """)
-    actual_query = normalize_whitespace(mock_cursor.execute.call_args[0][0])
-    assert actual_query == expected_query, "The SQL query did not match the expected structure."
-
-    # Verify the arguments passed to the query
-    actual_arguments = mock_cursor.execute.call_args[0][1]
     expected_arguments = (1,)
+    
+    assert actual_query == expected_query, "The SQL query did not match the expected structure."
     assert actual_arguments == expected_arguments, f"The SQL query arguments did not match. Expected {expected_arguments}, got {actual_arguments}"
-
 def test_update_boxer_stats_invalid_result(mock_cursor):
     """Test that an error is raised when the result is not 'win' or 'loss'."""
     

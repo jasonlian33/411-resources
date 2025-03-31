@@ -346,7 +346,7 @@ def update_boxer_stats(boxer_id: int, result: str) -> None:
                 logger.info("UPDATE boxers SET fights = fights + 1, wins = wins + 1 WHERE id = ?", (boxer_id,))
             else:  # result == 'loss'
                 cursor.execute("UPDATE boxers SET fights = fights + 1 WHERE id = ?", (boxer_id,))
-                logger.info("UPDATE boxers SET fights = fights + 1, wins = wins + 1 WHERE id = ?", (boxer_id,)) 
+                logger.info("UPDATE boxers SET fights = fights + 1,  WHERE id = ?", (boxer_id,)) 
 
             conn.commit()
             logger.info("Successfully added updated winloss record for boxer")
