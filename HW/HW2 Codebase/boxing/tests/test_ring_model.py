@@ -37,24 +37,35 @@ def sample_ring(sample_boxer1, sample_boxer2):
 # Fight Test Cases
 ##################################################
 
-def test_fight(ring_model, sample_ring, mock_update_boxer_stats):
+# test fight with 0 or 1 boxers
+def test_fight(ring_model, sample_ring, mocker):
     """
     Test that lets two fighters fight
     """
 
     ring_model.ring.extend(sample_ring)
+    print(ring_model.ring)
     
-    ring_model.fight()
-
-    mock_update_boxer_stats.assert_called()
+    for boxer in ring_model.ring:
+        print(boxer.name)
+    
+    mocker.patch("boxing.models.ring_model.get_random", return_value=0.10)
+    mocker.patch("boxing.models.ring_model.update_boxer_stats")
+    
+    winner = ring_model.fight()
+    assert winner == "Alex", "Winner of the fight is Alex"
+    
 
 
     assert len(ring_model.ring) == 0, "Ring should be empty after the fight"
+    
 
 
 ##################################################
 # Ring Management Test Cases
 ##################################################
+
+# add test case for clearing empty ring
 
 def test_clear_ring(ring_model, sample_boxer1, sample_boxer2):
     """ Test clearing the ring of all boxers.
@@ -65,18 +76,24 @@ def test_clear_ring(ring_model, sample_boxer1, sample_boxer2):
     ring_model.clear_ring()
     assert len(ring_model.ring) == 0, "Ring should be empty after clearing"
 
-def test_enter_ring(ring_model, sample_boxer1):
+# add test case if no boxer, add empty list should return error
+
+# with 3 boxers in the ring, should raise error
+def test_enter_ring(ring_model, sample_boxer1, sample_boxer2):
     """Test adding a boxer to the ring
     """
     ring_model.enter_ring(sample_boxer1)
-    assert len(ring_model.ring) == 1
+    ring_model.enter_ring(sample_boxer2)
+    assert len(ring_model.ring) == 2
     assert ring_model.ring[0].name == "Alex"
+    assert ring_model.ring[1].name == "Bob"
 
 
 ##################################################
 # Get Boxers / Fighting Skills Test Cases
 ##################################################
 
+# test fighting with 
 def test_get_boxers(ring_model, sample_ring):
     """Test succesfully getting the boxers in the ring.
     """
