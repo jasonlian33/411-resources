@@ -1,4 +1,7 @@
 import pytest
+from pytest_mock import MockerFixture
+
+
 
 # from boxing.models.boxers_model import Boxer
 
@@ -9,6 +12,11 @@ from boxing.models.boxers_model import Boxer
 def ring_model():
     """ Fixture to provide a new instance of RingModel for each test."""
     return RingModel()
+
+@pytest.fixture
+def mock_update_boxer_stats(mocker):
+    """Mock the update_play_count function for testing purposes."""
+    return mocker.patch("boxing.models.boxers_model.update_boxer_stats")
 
 """Fixtures providing sample boxers for the tests."""
 @pytest.fixture()
@@ -29,7 +37,7 @@ def sample_ring(sample_boxer1, sample_boxer2):
 # Fight Test Cases
 ##################################################
 
-def test_fight(ring_model, sample_ring):
+def test_fight(ring_model, sample_ring, mock_update_boxer_stats):
     """
     Test that lets two fighters fight
     """
@@ -37,6 +45,9 @@ def test_fight(ring_model, sample_ring):
     ring_model.ring.extend(sample_ring)
     
     ring_model.fight()
+
+    mock_update_boxer_stats.assert_called()
+
 
     assert len(ring_model.ring) == 0, "Ring should be empty after the fight"
 

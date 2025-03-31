@@ -3,6 +3,7 @@ import math
 from typing import List
 
 from boxing.models.boxers_model import Boxer, update_boxer_stats
+print(update_boxer_stats)
 from boxing.utils.logger import configure_logger
 from boxing.utils.api_utils import get_random
 
@@ -43,7 +44,9 @@ class RingModel:
         if len(self.ring) < 2:
             logger.error("Invalid Value: The ring has less than two boxers")
             raise ValueError("There must be two boxers to start a fight.")
-
+        if len(self.ring) > 2: 
+            logger.error("Invalid Value: The ring has more than two boxers")
+            raise ValueError("There must be two boxers to start the fight.")
         boxer_1, boxer_2 = self.get_boxers()
 
         skill_1 = self.get_fighting_skill(boxer_1)
