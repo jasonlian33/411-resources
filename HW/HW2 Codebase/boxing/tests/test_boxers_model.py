@@ -223,7 +223,7 @@ def test_get_boxer_by_id_not_found(mock_cursor):
 
     with pytest.raises(ValueError, match="Boxer with ID 99 not found."):
         get_boxer_by_id(99)
-git
+
 ######################################################
 #
 #    Get Weight Class

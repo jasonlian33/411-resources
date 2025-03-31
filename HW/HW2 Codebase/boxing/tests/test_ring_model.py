@@ -58,7 +58,7 @@ def test_enter_ring(ring_model, sample_boxer1):
     """Test adding a boxer to the ring
     """
     ring_model.enter_ring(sample_boxer1)
-    assert len(ring_model) == 1
+    assert len(ring_model.ring) == 1
     assert ring_model.ring[0].name == "Alex"
 
 
