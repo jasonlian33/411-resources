@@ -50,6 +50,7 @@ check_db() {
 #
 ############################################################
 
+
 create_boxer(){
     name=$1
     weight=$2
@@ -58,7 +59,7 @@ create_boxer(){
     age=$5
 
     echo "Adding boxer ($name, $age) to the ring..."
-    curl -s -X POST "$BASE_URL/create-boxer" -H "Content-Type: application/json" \
+    curl -s -X POST "$BASE_URL/add-boxer" -H "Content-Type: application/json" \
     -d "{\"name\":\"$name\", \"weight\":$weight, \"height\":$height, \"reach\":$reach, \"age\":$age}" | grep -q '"status": "success"'
 
     if [ $? -eq 0 ]; then
@@ -69,11 +70,12 @@ create_boxer(){
     fi
 }
 
+
 delete_boxer_by_id(){
     boxer_id=$1
 
     echo "Deleting boxer by ID ($boxer_id)..."
-    response=$(curl -s -X DELETE "$BASE_URL/delete-boxer-by-id/$boxer_id")
+    response=$(curl -s -X DELETE "$BASE_URL/delete-boxer/$boxer_id")
     if echo "$response" | grep -q '"status": "success"'; then
     echo "Boxer deleted successfully by ID ($boxer_id)."
     else
@@ -123,10 +125,9 @@ get_boxer_by_name(){
 #
 ############################################################
 
-# not sure how to implemenet/need to implement
 fight(){
     echo "Initiating fight ..."
-    response=$(curl -s -X POST "$BASE_URL/begin-fight")
+    response=$(curl -s -X GET "$BASE_URL/fight")
 
     if echo "$response" | grep -q '"status": "success"'; then
         echo "Fight starts and ends with one winner."
@@ -137,9 +138,9 @@ fight(){
 
 }
 
-clear_ring(){
-    echo "Clearing ring..."
-    response=$(curl -s -X POST "$BASE_URL/clear-ring")
+clear_boxers(){
+    echo "Clearing boxers from ring..."
+    response=$(curl -s -X POST "$BASE_URL/clear-boxers")
 
     if echo "$response" | grep -q '"status": "success"'; then
         echo "Ring cleared successfully."
@@ -149,31 +150,32 @@ clear_ring(){
     fi
 }
 
+
 enter_ring(){
-    boxer_id=$1
-    boxer_name=$2
-    boxer_age=$3
-    
-    echo "Entering boxer to the ring: $boxerid: $boxer_name ($boxer_age) ..."
-    response=$(curl -s -X POST "$BASE_URL/enter-boxer-to-ring" \
+    boxer_name=$1
+    boxer_age=$2
+
+    echo "Entering boxer to the ring: $boxer_name ($boxer_age) ..."
+    response=$(curl -s -X POST "$BASE_URL/enter-ring" \
         -H "Content-Type: application/json" \
-        -d "{\"boxer_id\":\"$boxer_id\", \"boxer_name\":\"$boxer_name\", \"boxer_age\":$year}")
+        -d "{\"name\": \"$boxer_name\", \"boxer_age\": $boxer_age}")
 
     if echo "$response" | grep -q '"status": "success"'; then
-        echo "Song added to playlist successfully."
+        echo "Boxer added to ring successfully."
         if [ "$ECHO_JSON" = true ]; then
-        echo "Song JSON:"
-        echo "$response" | jq .
+            echo "Boxer JSON:"
+            echo "$response" | jq .
         fi
     else
-        echo "Failed to add song to playlist."
+        echo "Failed to add boxer to ring."
         exit 1
     fi
 }
 
+
 get_boxers(){
     echo "Retrieving all boxers from the ring..."
-    response=$(curl -s -X GET "$BASE_URL/get-all-boxers-from-ring")
+    response=$(curl -s -X GET "$BASE_URL/get-boxers")
 
     if echo "$response" | grep -q '"status": "success"'; then
         echo "All boxers retrieved successfully."
@@ -198,7 +200,7 @@ get_boxers(){
 # Function to get the boxing leaderboard sorted by play wins
 get_boxing_leaderboard(){
     echo "Getting boxing leaderboard sorted by play wins..."
-    response=$(curl -s -X GET "$BASE_URL/boxing-leaderboard?sort=wins")
+    response=$(curl -s -X GET "$BASE_URL/leaderboard?sort=wins")
     if echo "$response" | grep -q '"status": "success"'; then
         echo "Boxing leaderboard retrieved successfully."
         if [ "$ECHO_JSON" = true ]; then
@@ -233,11 +235,13 @@ get_boxer_by_id 2
 get_boxer_by_name "Bot"
 get_boxer_by_name "Dan"
 
-enter_ring 3 "Ben" 30
-enter_ring 4 "Phil" 22
-fight #might need to move somewhere else
+clear_boxers
 
-clear_ring
+enter_ring "Ben" 30
+enter_ring "Phil" 22
+fight 
+
+clear_boxers
 
 get_boxing_leaderboard
 
