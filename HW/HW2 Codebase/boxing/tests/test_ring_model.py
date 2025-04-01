@@ -166,7 +166,6 @@ def test_get_boxers_empty(ring_model):
     all_boxers = ring_model.get_boxers()
     assert len(all_boxers) == 0
 
-
 def test_get_fighting_skills(ring_model, sample_boxer1):
     """Test successfully retrieving the boxer's skill.
     """
