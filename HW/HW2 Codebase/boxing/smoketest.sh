@@ -220,7 +220,7 @@ sqlite3 db/boxing.db < sql/init_db.sql
 check_health
 check_db
 
-# Create Boxers
+#Create Boxers
 create_boxer "Alex" 180 185 80 24
 create_boxer "Jordan" 168 175 73 35
 create_boxer "Ben" 200 191 82 30
@@ -246,6 +246,8 @@ clear_boxers
 get_boxing_leaderboard
 
 echo "All tests passed successfully!"
+
+
 
 
 

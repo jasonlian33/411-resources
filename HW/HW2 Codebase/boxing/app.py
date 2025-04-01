@@ -313,8 +313,8 @@ def bout() -> Response:
         app.logger.info("Initiating fight...")
 
         winner = ring_model.fight()
-
         app.logger.info(f"Fight complete. Winner: {winner}")
+
         return make_response(jsonify({
             "status": "success",
             "message": "Fight complete",
