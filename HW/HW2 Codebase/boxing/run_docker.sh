@@ -45,6 +45,6 @@ echo "Running Docker container..."
 docker run -d \
   --name ${IMAGE_NAME}_container \
   -p ${HOST_PORT}:${CONTAINER_PORT} \
-  -v ${DB_VOLUME_PATH}:/app/data \
+  -v ${DB_VOLUME_PATH}:/app/db \
   ${IMAGE_NAME}:${CONTAINER_TAG}
   echo "Docker container is running on port ${HOST_PORT}."
