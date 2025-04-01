@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Set the name of the virtual environment directory
-VENV_DIR=
-REQUIREMENTS_FILE=
+VENV_DIR="../virtualenv2"
+REQUIREMENTS_FILE="./requirement.txt"
 
 # Check if the virtual environment already exists
 if [ ! -d "$VENV_DIR" ]; then
