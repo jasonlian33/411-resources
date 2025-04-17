@@ -1,7 +1,7 @@
 import logging
 from typing import List
 
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from boxing.db import db
 from boxing.utils.logger import configure_logger
@@ -51,15 +51,14 @@ class Boxers(db.Model, TimestamperMixin, ReprMixin, LoggerMixin):
         """
         __tablename__ = 'boxers'
 
-        id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-        name = db.Column(db.String, unique=True, nullable=False)
-        weight = db.Column(db.Float, nullable=False)
-        height = db.Column(db.Float, nullable=False)
-        reach = db.Column(db.Float, nullable=False)
-        age = db.Column(db.Integer, nullable=False)
-        fights = db.Column(db.Integer, nullable=False, default=0)
-        wins = db.Column(db.Integer, nullable=False, default=0)
-        weight_class = db.Column(db.String)
+        self.name = name
+        self.weight = weight
+        self.height = height
+        self.reach = reach
+        self.age = age
+        self.fights = 0
+        self.wins = 0
+        self.weight_class = self.get_weight_class(weight)
 
     @classmethod
     def get_weight_class(cls, weight: float) -> str:
@@ -159,12 +158,12 @@ class Boxers(db.Model, TimestamperMixin, ReprMixin, LoggerMixin):
         """
         logger.info(f"Trying to retrieve boxer with ID {boxer_id}")
 
-        boxer = cls._get_boxer_from_cache_or_db(boxer_id)
+        boxer = db.session.get(cls, boxer_id)
 
         if boxer is None:
             logger.info(f"Boxer with ID {boxer_id} not found.")
             raise ValueError(f"Boxer with ID {boxer_id} not found.")
-        
+
         logger.info(f"Successfully retrieved boxer: {boxer.name} ({boxer.weight_class})")
         return boxer
 
