@@ -36,10 +36,6 @@ class RingModel:
         self._ttl: dict[int, float] = {}
         self.ttl_seconds = int(os.getenv("TTL_SECONDS", "60"))
 
-
-
-        pass
-
     def fight(self) -> str:
         """Simulates a fight between two combatants.
 
@@ -119,10 +115,14 @@ class RingModel:
         """
         if len(self.ring) >= 2:
             logger.error(f"Attempted to add boxer ID {boxer_id} but the ring is full")
-            raise ValueError("Ring is already full")
+            raise ValueError("Ring is full")
 
         boxer = Boxers.get_boxer_by_id(boxer_id)  # will raise if invalid
+
         self.ring.append(boxer_id)
+        self._boxer_cache[boxer_id] = boxer
+        self._ttl[boxer_id] = time.time() + self.ttl_seconds
+
         logger.info(f"Adding boxer '{boxer.name}' (ID {boxer_id}) to the ring")
         logger.debug(f"Current boxers in the ring: {self.ring}")
 
@@ -145,13 +145,14 @@ class RingModel:
         for boxer_id in self.ring:
             expired = (
                 boxer_id not in self._ttl or
-                now - self._ttl[boxer_id] > self.ttl_seconds
+                now > self._ttl[boxer_id]
             )
             if expired:
                 logger.info(f"TTL expired or missing for boxer {boxer_id}. Refreshing from DB.")
+
                 boxer = Boxers.get_boxer_by_id(boxer_id)
                 self._boxer_cache[boxer_id] = boxer
-                self._ttl[boxer_id] = now
+                self._ttl[boxer_id] = now + self.ttl_seconds
             else:
                 logger.debug(f"Using cached boxer {boxer_id} (TTL valid).")
                 boxer = self._boxer_cache[boxer_id]
