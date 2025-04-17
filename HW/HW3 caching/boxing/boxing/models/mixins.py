@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 from sqlalchemy import Column, DateTime
 
 
@@ -19,10 +19,10 @@ class ReprMixin:
 
 class LoggerMixin:
     def log_create(self):
-        print(f"[CREATE] {self.__class__.__name__} created at {datetime.now(UTC)}")
+        print(f"[CREATE] {self.__class__.__name__} created at {datetime.now()}")
 
     def log_update(self):
-        print(f"[UPDATE] {self.__class__.__name__} updated at {datetime.now(UTC)}")
+        print(f"[UPDATE] {self.__class__.__name__} updated at {datetime.now()}")
 
     def log_delete(self):
-        print(f"[DELETE] {self.__class__.__name__} deleted at {datetime.now(UTC)}")
+        print(f"[DELETE] {self.__class__.__name__} deleted at {datetime.now()}")
