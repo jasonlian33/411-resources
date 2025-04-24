@@ -11,89 +11,89 @@ logger = logging.getLogger(__name__)
 configure_logger(logger)
 
 
-class Songs(db.Model):
-    """Represents a song in the catalog.
+class Books(db.Model):
+    """Represents a book in the catalog.
 
-    This model maps to the 'songs' table and stores metadata such as artist,
-    title, genre, release year, and duration. It also tracks play count.
+    This model maps to the 'books' table and stores metadata such as author,
+    title, genre, release year, and length. It also tracks read count.
 
     Used in a Flask-SQLAlchemy application for playlist management,
     user interaction, and data-driven song operations.
     """
 
-    __tablename__ = "Songs"
+    __tablename__ = "Books"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    artist = db.Column(db.String, nullable=False)
+    author = db.Column(db.String, nullable=False)
     title = db.Column(db.String, nullable=False)
     year = db.Column(db.Integer, nullable=False)
     genre = db.Column(db.String, nullable=False)
-    duration = db.Column(db.Integer, nullable=False)
-    play_count = db.Column(db.Integer, nullable=False, default=0)
+    length = db.Column(db.Integer, nullable=False) # number of pages the book has
+    read_count = db.Column(db.Integer, nullable=False, default=0)
 
     def validate(self) -> None:
-        """Validates the song instance before committing to the database.
+        """Validates the book instance before committing to the database.
 
         Raises:
             ValueError: If any required fields are invalid.
         """
-        if not self.artist or not isinstance(self.artist, str):
-            raise ValueError("Artist must be a non-empty string.")
+        if not self.author or not isinstance(self.author, str):
+            raise ValueError("Author must be a non-empty string.")
         if not self.title or not isinstance(self.title, str):
             raise ValueError("Title must be a non-empty string.")
         if not isinstance(self.year, int) or self.year <= 1900:
             raise ValueError("Year must be an integer greater than 1900.")
         if not self.genre or not isinstance(self.genre, str):
             raise ValueError("Genre must be a non-empty string.")
-        if not isinstance(self.duration, int) or self.duration <= 0:
-            raise ValueError("Duration must be a positive integer.")
+        if not isinstance(self.length, int) or self.length <= 0:
+            raise ValueError("Length must be a positive integer.")
 
     @classmethod
-    def create_song(cls, artist: str, title: str, year: int, genre: str, duration: int) -> None:
+    def create_book(cls, author: str, title: str, year: int, genre: str, length: int) -> None:
         """
-        Creates a new song in the songs table using SQLAlchemy.
+        Creates a new book in the books table using SQLAlchemy.
 
         Args:
-            artist (str): The artist's name.
-            title (str): The song title.
-            year (int): The year the song was released.
-            genre (str): The song genre.
-            duration (int): The duration of the song in seconds.
+            author (str): The author's name.
+            title (str): The book title.
+            year (int): The year the book was released.
+            genre (str): The book genre.
+            length (int): The length of the book in pages.
 
         Raises:
             ValueError: If any field is invalid or if a song with the same compound key already exists.
             SQLAlchemyError: For any other database-related issues.
         """
-        logger.info(f"Received request to create song: {artist} - {title} ({year})")
+        logger.info(f"Received request to create song: {author} - {title} ({year})")
 
         try:
-            song = Songs(
-                artist=artist.strip(),
+            book = Books(
+                author=author.strip(),
                 title=title.strip(),
                 year=year,
                 genre=genre.strip(),
-                duration=duration
+                length=length
             )
-            song.validate()
+            book.validate()
         except ValueError as e:
             logger.warning(f"Validation failed: {e}")
             raise
 
         try:
             # Check for existing song with same compound key (artist, title, year)
-            existing = Songs.query.filter_by(artist=artist.strip(), title=title.strip(), year=year).first()
+            existing = Books.query.filter_by(author=author.strip(), title=title.strip(), year=year).first()
             if existing:
-                logger.error(f"Song already exists: {artist} - {title} ({year})")
-                raise ValueError(f"Song with artist '{artist}', title '{title}', and year {year} already exists.")
+                logger.error(f"Song already exists: {author} - {title} ({year})")
+                raise ValueError(f"Song with artist '{author}', title '{title}', and year {year} already exists.")
 
-            db.session.add(song)
+            db.session.add(book)
             db.session.commit()
-            logger.info(f"Song successfully added: {artist} - {title} ({year})")
+            logger.info(f"Song successfully added: {author} - {title} ({year})")
 
         except IntegrityError:
-            logger.error(f"Song already exists: {artist} - {title} ({year})")
+            logger.error(f"Song already exists: {author} - {title} ({year})")
             db.session.rollback()
-            raise ValueError(f"Song with artist '{artist}', title '{title}', and year {year} already exists.")
+            raise ValueError(f"Song with artist '{author}', title '{title}', and year {year} already exists.")
 
         except SQLAlchemyError as e:
             logger.error(f"Database error while creating song: {e}")
@@ -101,190 +101,190 @@ class Songs(db.Model):
             raise
 
     @classmethod
-    def delete_song(cls, song_id: int) -> None:
+    def delete_book(cls, book_id: int) -> None:
         """
-        Permanently deletes a song from the catalog by ID.
+        Permanently deletes a book from the catalog by ID.
 
         Args:
-            song_id (int): The ID of the song to delete.
+            book_id (int): The ID of the book to delete.
 
         Raises:
-            ValueError: If the song with the given ID does not exist.
+            ValueError: If the book with the given ID does not exist.
             SQLAlchemyError: For any database-related issues.
         """
-        logger.info(f"Received request to delete song with ID {song_id}")
+        logger.info(f"Received request to delete song with ID {book_id}")
 
         try:
-            song = cls.query.get(song_id)
-            if not song:
-                logger.warning(f"Attempted to delete non-existent song with ID {song_id}")
-                raise ValueError(f"Song with ID {song_id} not found")
+            book = cls.query.get(book_id)
+            if not book:
+                logger.warning(f"Attempted to delete non-existent song with ID {book_id}")
+                raise ValueError(f"Song with ID {book_id} not found")
 
-            db.session.delete(song)
+            db.session.delete(book)
             db.session.commit()
-            logger.info(f"Successfully deleted song with ID {song_id}")
+            logger.info(f"Successfully deleted song with ID {book_id}")
 
         except SQLAlchemyError as e:
-            logger.error(f"Database error while deleting song with ID {song_id}: {e}")
+            logger.error(f"Database error while deleting song with ID {book_id}: {e}")
             db.session.rollback()
             raise
 
     @classmethod
-    def get_song_by_id(cls, song_id: int) -> "Songs":
+    def get_book_by_id(cls, book_id: int) -> "Books":
         """
-        Retrieves a song from the catalog by its ID.
+        Retrieves a book from the catalog by its ID.
 
         Args:
-            song_id (int): The ID of the song to retrieve.
+            book_id (int): The ID of the book to retrieve.
 
         Returns:
-            Songs: The song instance corresponding to the ID.
+            Books: The book instance corresponding to the ID.
 
         Raises:
-            ValueError: If no song with the given ID is found.
+            ValueError: If no book with the given ID is found.
             SQLAlchemyError: If a database error occurs.
         """
-        logger.info(f"Attempting to retrieve song with ID {song_id}")
+        logger.info(f"Attempting to retrieve song with ID {book_id}")
 
         try:
-            song = cls.query.get(song_id)
+            book = cls.query.get(book_id)
 
-            if not song:
-                logger.info(f"Song with ID {song_id} not found")
-                raise ValueError(f"Song with ID {song_id} not found")
+            if not book:
+                logger.info(f"Book with ID {book_id} not found")
+                raise ValueError(f"Book with ID {book_id} not found")
 
-            logger.info(f"Successfully retrieved song: {song.artist} - {song.title} ({song.year})")
-            return song
+            logger.info(f"Successfully retrieved song: {book.author} - {book.title} ({book.year})")
+            return book
 
         except SQLAlchemyError as e:
-            logger.error(f"Database error while retrieving song by ID {song_id}: {e}")
+            logger.error(f"Database error while retrieving book by ID {book_id}: {e}")
             raise
 
     @classmethod
-    def get_song_by_compound_key(cls, artist: str, title: str, year: int) -> "Songs":
+    def get_book_by_compound_key(cls, author: str, title: str, year: int) -> "Books":
         """
-        Retrieves a song from the catalog by its compound key (artist, title, year).
+        Retrieves a book from the catalog by its compound key (author, title, year).
 
         Args:
-            artist (str): The artist of the song.
+            author (str): The author of the song.
             title (str): The title of the song.
             year (int): The year the song was released.
 
         Returns:
-            Songs: The song instance matching the provided compound key.
+            Books: The book instance matching the provided compound key.
 
         Raises:
-            ValueError: If no matching song is found.
+            ValueError: If no matching book is found.
             SQLAlchemyError: If a database error occurs.
         """
-        logger.info(f"Attempting to retrieve song with artist '{artist}', title '{title}', and year {year}")
+        logger.info(f"Attempting to retrieve book with author '{author}', title '{title}', and year {year}")
 
         try:
-            song = cls.query.filter_by(artist=artist.strip(), title=title.strip(), year=year).first()
+            book = cls.query.filter_by(author=author.strip(), title=title.strip(), year=year).first()
 
-            if not song:
-                logger.info(f"Song with artist '{artist}', title '{title}', and year {year} not found")
-                raise ValueError(f"Song with artist '{artist}', title '{title}', and year {year} not found")
+            if not book:
+                logger.info(f"Book with author '{author}', title '{title}', and year {year} not found")
+                raise ValueError(f"Book with author '{author}', title '{title}', and year {year} not found")
 
-            logger.info(f"Successfully retrieved song: {song.artist} - {song.title} ({song.year})")
-            return song
+            logger.info(f"Successfully retrieved book: {book.author} - {book.title} ({book.year})")
+            return book
 
         except SQLAlchemyError as e:
             logger.error(
                 f"Database error while retrieving song by compound key "
-                f"(artist '{artist}', title '{title}', year {year}): {e}"
+                f"(author '{author}', title '{title}', year {year}): {e}"
             )
             raise
 
     @classmethod
-    def get_all_songs(cls, sort_by_play_count: bool = False) -> list[dict]:
+    def get_all_books(cls, sort_by_read_count: bool = False) -> list[dict]:
         """
-        Retrieves all songs from the catalog as dictionaries.
+        Retrieves all books from the catalog as dictionaries.
 
         Args:
-            sort_by_play_count (bool): If True, sort the songs by play count in descending order.
+            sort_by_read_count (bool): If True, sort the books by read count in descending order.
 
         Returns:
-            list[dict]: A list of dictionaries representing all songs with play_count.
+            list[dict]: A list of dictionaries representing all books with read_count.
 
         Raises:
             SQLAlchemyError: If any database error occurs.
         """
-        logger.info("Attempting to retrieve all songs from the catalog")
+        logger.info("Attempting to retrieve all book from the catalog")
 
         try:
             query = cls.query
-            if sort_by_play_count:
+            if sort_by_read_count:
                 query = query.order_by(cls.play_count.desc())
 
-            songs = query.all()
+            books = query.all()
 
-            if not songs:
-                logger.warning("The song catalog is empty.")
+            if not books:
+                logger.warning("The book catalog is empty.")
                 return []
 
             results = [
                 {
-                    "id": song.id,
-                    "artist": song.artist,
-                    "title": song.title,
-                    "year": song.year,
-                    "genre": song.genre,
-                    "duration": song.duration,
-                    "play_count": song.play_count,
+                    "id": book.id,
+                    "author": book.author,
+                    "title": book.title,
+                    "year": book.year,
+                    "genre": book.genre,
+                    "length": book.length,
+                    "read_count": book.read_count,
                 }
-                for song in songs
+                for book in books
             ]
 
-            logger.info(f"Retrieved {len(results)} songs from the catalog")
+            logger.info(f"Retrieved {len(results)} books from the catalog")
             return results
 
         except SQLAlchemyError as e:
-            logger.error(f"Database error while retrieving all songs: {e}")
+            logger.error(f"Database error while retrieving all books: {e}")
             raise
 
     @classmethod
-    def get_random_song(cls) -> dict:
+    def get_random_book(cls) -> dict:
         """
-        Retrieves a random song from the catalog as a dictionary.
+        Retrieves a random book from the catalog as a dictionary.
 
         Returns:
-            dict: A randomly selected song dictionary.
+            dict: A randomly selected book dictionary.
         """
-        all_songs = cls.get_all_songs()
+        all_books = cls.get_all_books()
 
-        if not all_songs:
-            logger.warning("Cannot retrieve random song because the song catalog is empty.")
-            raise ValueError("The song catalog is empty.")
+        if not all_books:
+            logger.warning("Cannot retrieve random book because the book catalog is empty.")
+            raise ValueError("The book catalog is empty.")
 
-        index = get_random(len(all_songs))
-        logger.info(f"Random index selected: {index} (total songs: {len(all_songs)})")
+        index = get_random(len(all_books))
+        logger.info(f"Random index selected: {index} (total books: {len(all_books)})")
 
-        return all_songs[index - 1]
+        return all_books[index - 1]
 
-    def update_play_count(self) -> None:
+    def update_read_count(self) -> None:
         """
-        Increments the play count of the current song instance.
+        Increments the read count of the current book instance.
 
         Raises:
-            ValueError: If the song does not exist in the database.
+            ValueError: If the book does not exist in the database.
             SQLAlchemyError: If any database error occurs.
         """
 
-        logger.info(f"Attempting to update play count for song with ID {self.id}")
+        logger.info(f"Attempting to update play count for book with ID {self.id}")
 
         try:
-            song = Songs.query.get(self.id)
-            if not song:
-                logger.warning(f"Cannot update play count: Song with ID {self.id} not found.")
-                raise ValueError(f"Song with ID {self.id} not found")
+            book = Books.query.get(self.id)
+            if not book:
+                logger.warning(f"Cannot update read count: Book with ID {self.id} not found.")
+                raise ValueError(f"Book with ID {self.id} not found")
 
-            song.play_count += 1
+            book.play_count += 1
             db.session.commit()
 
-            logger.info(f"Play count incremented for song with ID: {self.id}")
+            logger.info(f"Read count incremented for book with ID: {self.id}")
 
         except SQLAlchemyError as e:
-            logger.error(f"Database error while updating play count for song with ID {self.id}: {e}")
+            logger.error(f"Database error while updating read count for book with ID {self.id}: {e}")
             db.session.rollback()
             raise
