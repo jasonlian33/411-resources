@@ -3,7 +3,7 @@ import os
 import time
 from typing import List
 
-from final.readinglist.readinglist.models.book_model import Songs
+from final.readinglist.readinglist.models.book_model import Books
 from readinglist.utils.api_utils import get_random
 from readinglist.utils.logger import configure_logger
 
@@ -11,432 +11,432 @@ logger = logging.getLogger(__name__)
 configure_logger(logger)
 
 
-class PlaylistModel:
+class ReadinglistModel:
     """
-    A class to manage a playlist of songs.
+    A class to manage a readinglist of books.
 
     """
 
     def __init__(self):
-        """Initializes the PlaylistModel with an empty playlist and the current track set to 1.
+        """Initializes the ReadinglistModel with an empty readinglist and the current list set to 1.
 
-        The playlist is a list of Songs, and the current track number is 1-indexed.
-        The TTL (Time To Live) for song caching is set to a default value from the environment variable "TTL",
+        The readinglist is a list of Books, and the current list number is 1-indexed.
+        The TTL (Time To Live) for book caching is set to a default value from the environment variable "TTL",
         which defaults to 60 seconds if not set.
 
         """
-        self.current_track_number = 1
-        self.playlist: List[int] = []
-        self._song_cache: dict[int, Songs] = {}
+        self.current_list_number = 1
+        self.readinglist: List[int] = []
+        self._book_cache: dict[int, Books] = {}
         self._ttl: dict[int, float] = {}
         self.ttl_seconds = int(os.getenv("TTL", 60))  # Default TTL is 60 seconds
 
 
     ##################################################
-    # Song Management Functions
+    # Book Management Functions
     ##################################################
 
-    def _get_song_from_cache_or_db(self, song_id: int) -> Songs:
+    def _get_book_from_cache_or_db(self, book_id: int) -> Books:
         """
-        Retrieves a song by ID, using the internal cache if possible.
+        Retrieves a book by ID, using the internal cache if possible.
 
-        This method checks whether a cached version of the song is available
-        and still valid. If not, it queries the database, updates the cache, and returns the song.
+        This method checks whether a cached version of the book is available
+        and still valid. If not, it queries the database, updates the cache, and returns the book.
 
         Args:
-            song_id (int): The unique ID of the song to retrieve.
+            book_id (int): The unique ID of the book to retrieve.
 
         Returns:
-            Songs: The song object corresponding to the given ID.
+            Books: The book object corresponding to the given ID.
 
         Raises:
-            ValueError: If the song cannot be found in the database.
+            ValueError: If the book cannot be found in the database.
         """
         now = time.time()
 
-        if song_id in self._song_cache and self._ttl.get(song_id, 0) > now:
-            logger.debug(f"Song ID {song_id} retrieved from cache")
-            return self._song_cache[song_id]
+        if book_id in self._book_cache and self._ttl.get(book_id, 0) > now:
+            logger.debug(f"Book ID {book_id} retrieved from cache")
+            return self._book_cache[book_id]
 
         try:
-            song = Songs.get_song_by_id(song_id)
-            logger.info(f"Song ID {song_id} loaded from DB")
+            book = Books.get_book_by_id(book_id)
+            logger.info(f"Book ID {book_id} loaded from DB")
         except ValueError as e:
-            logger.error(f"Song ID {song_id} not found in DB: {e}")
-            raise ValueError(f"Song ID {song_id} not found in database") from e
+            logger.error(f"Book ID {book_id} not found in DB: {e}")
+            raise ValueError(f"Book ID {book_id} not found in database") from e
 
-        self._song_cache[song_id] = song
-        self._ttl[song_id] = now + self.ttl_seconds
-        return song
+        self._book_cache[book_id] = book
+        self._ttl[book_id] = now + self.ttl_seconds
+        return book
 
-    def add_song_to_playlist(self, song_id: int) -> None:
+    def add_book_to_readinglist(self, book_id: int) -> None:
         """
-        Adds a song to the playlist by ID, using the cache or database lookup.
+        Adds a book to the readinglist by ID, using the cache or database lookup.
 
         Args:
-            song_id (int): The ID of the song to add to the playlist.
+            book_id (int): The ID of the book to add to the readinglist.
 
         Raises:
-            ValueError: If the song ID is invalid or already exists in the playlist.
+            ValueError: If the book ID is invalid or already exists in the readinglist.
         """
-        logger.info(f"Received request to add song with ID {song_id} to the playlist")
+        logger.info(f"Received request to add book with ID {book_id} to the readinglist")
 
-        song_id = self.validate_song_id(song_id, check_in_playlist=False)
+        book_id = self.validate_book_id(book_id, check_in_readinglist=False)
 
-        if song_id in self.playlist:
-            logger.error(f"Song with ID {song_id} already exists in the playlist")
-            raise ValueError(f"Song with ID {song_id} already exists in the playlist")
+        if book_id in self.readinglist:
+            logger.error(f"Book with ID {book_id} already exists in the readinglist")
+            raise ValueError(f"Book with ID {book_id} already exists in the readinglist")
 
         try:
-            song = self._get_song_from_cache_or_db(song_id)
+            book = self._get_book_from_cache_or_db(book_id)
         except ValueError as e:
-            logger.error(f"Failed to add song: {e}")
+            logger.error(f"Failed to add book: {e}")
             raise
 
-        self.playlist.append(song.id)
-        logger.info(f"Successfully added to playlist: {song.artist} - {song.title} ({song.year})")
+        self.readinglist.append(book.id)
+        logger.info(f"Successfully added to readinglist: {book.author} - {book.title} ({book.year})")
 
 
-    def remove_song_by_song_id(self, song_id: int) -> None:
-        """Removes a song from the playlist by its song ID.
-
-        Args:
-            song_id (int): The ID of the song to remove from the playlist.
-
-        Raises:
-            ValueError: If the playlist is empty or the song ID is invalid.
-
-        """
-        logger.info(f"Received request to remove song with ID {song_id}")
-
-        self.check_if_empty()
-        song_id = self.validate_song_id(song_id)
-
-        if song_id not in self.playlist:
-            logger.warning(f"Song with ID {song_id} not found in the playlist")
-            raise ValueError(f"Song with ID {song_id} not found in the playlist")
-
-        self.playlist.remove(song_id)
-        logger.info(f"Successfully removed song with ID {song_id} from the playlist")
-
-    def remove_song_by_track_number(self, track_number: int) -> None:
-        """Removes a song from the playlist by its track number (1-indexed).
+    def remove_book_by_book_id(self, book_id: int) -> None:
+        """Removes a book from the readinglist by its book ID.
 
         Args:
-            track_number (int): The track number of the song to remove.
+            book_id (int): The ID of the book to remove from the readinglist.
 
         Raises:
-            ValueError: If the playlist is empty or the track number is invalid.
+            ValueError: If the readinglist is empty or the book ID is invalid.
 
         """
-        logger.info(f"Received request to remove song at track number {track_number}")
+        logger.info(f"Received request to remove book with ID {book_id}")
 
         self.check_if_empty()
-        track_number = self.validate_track_number(track_number)
-        playlist_index = track_number - 1
+        book_id = self.validate_book_id(book_id)
 
-        logger.info(f"Successfully removed song at track number {track_number}")
-        del self.playlist[playlist_index]
+        if book_id not in self.readinglist:
+            logger.warning(f"Book with ID {book_id} not found in the readinglist")
+            raise ValueError(f"Book with ID {book_id} not found in the readinglist")
 
-    def clear_playlist(self) -> None:
-        """Clears all songs from the playlist.
+        self.readinglist.remove(book_id)
+        logger.info(f"Successfully removed book with ID {book_id} from the readinglist")
 
-        Clears all songs from the playlist. If the playlist is already empty, logs a warning.
+    def remove_book_by_list_number(self, list_number: int) -> None:
+        """Removes a book from the readinglist by its list number (1-indexed).
+
+        Args:
+            list_number (int): The list number of the book to remove.
+
+        Raises:
+            ValueError: If the readinglist is empty or the list number is invalid.
 
         """
-        logger.info("Received request to clear the playlist")
+        logger.info(f"Received request to remove book at list number {list_number}")
+
+        self.check_if_empty()
+        list_number = self.validate_list_number(list_number)
+        readinglist_index = list_number - 1
+
+        logger.info(f"Successfully removed book at list number {list_number}")
+        del self.readinglist[readinglist_index]
+
+    def clear_readinglist(self) -> None:
+        """Clears all books from the readinglist.
+
+        Clears all books from the readinglist. If the readinglist is already empty, logs a warning.
+
+        """
+        logger.info("Received request to clear the readinglist")
 
         try:
             if self.check_if_empty():
                 pass
         except ValueError:
-            logger.warning("Clearing an empty playlist")
+            logger.warning("Clearing an empty readinglist")
 
-        self.playlist.clear()
-        logger.info("Successfully cleared the playlist")
+        self.readinglist.clear()
+        logger.info("Successfully cleared the readinglist")
 
 
     ##################################################
-    # Playlist Retrieval Functions
+    # Readinglist Retrieval Functions
     ##################################################
 
 
-    def get_all_songs(self) -> List[Songs]:
-        """Returns a list of all songs in the playlist using cached song data.
+    def get_all_books(self) -> List[Books]:
+        """Returns a list of all books in the readinglist using cached book data.
 
         Returns:
-            List[Song]: A list of all songs in the playlist.
+            List[Books]: A list of all books in the readinglist.
 
         Raises:
-            ValueError: If the playlist is empty.
+            ValueError: If the readinglist is empty.
         """
         self.check_if_empty()
-        logger.info("Retrieving all songs in the playlist")
-        return [self._get_song_from_cache_or_db(song_id) for song_id in self.playlist]
+        logger.info("Retrieving all books in the readinglist")
+        return [self._get_book_from_cache_or_db(book_id) for book_id in self.readinglist]
 
-    def get_song_by_song_id(self, song_id: int) -> Songs:
-        """Retrieves a song from the playlist by its song ID using the cache or DB.
+    def get_book_by_book_id(self, book_id: int) -> Books:
+        """Retrieves a book from the readinglist by its book ID using the cache or DB.
 
         Args:
-            song_id (int): The ID of the song to retrieve.
+            book_id (int): The ID of the book to retrieve.
 
         Returns:
-            Song: The song with the specified ID.
+            Book: The book with the specified ID.
 
         Raises:
-            ValueError: If the playlist is empty or the song is not found.
+            ValueError: If the readinglist is empty or the book is not found.
         """
         self.check_if_empty()
-        song_id = self.validate_song_id(song_id)
-        logger.info(f"Retrieving song with ID {song_id} from the playlist")
-        song = self._get_song_from_cache_or_db(song_id)
-        logger.info(f"Successfully retrieved song: {song.artist} - {song.title} ({song.year})")
-        return song
+        book_id = self.validate_book_id(book_id)
+        logger.info(f"Retrieving book with ID {book_id} from the readinglist")
+        book = self._get_book_from_cache_or_db(book_id)
+        logger.info(f"Successfully retrieved book: {book.author} - {book.title} ({book.year})")
+        return book
 
-    def get_song_by_track_number(self, track_number: int) -> Songs:
-        """Retrieves a song from the playlist by its track number (1-indexed).
+    def get_book_by_list_number(self, list_number: int) -> Books:
+        """Retrieves a book from the readinglist by its list number (1-indexed).
 
         Args:
-            track_number (int): The track number of the song to retrieve.
+            list_number (int): The list number of the book to retrieve.
 
         Returns:
-            Song: The song at the specified track number.
+            Book: The book at the specified list number.
 
         Raises:
-            ValueError: If the playlist is empty or the track number is invalid.
+            ValueError: If the readinglist is empty or the list number is invalid.
         """
         self.check_if_empty()
-        track_number = self.validate_track_number(track_number)
-        playlist_index = track_number - 1
+        list_number = self.validate_list_number(list_number)
+        readinglist_index = list_number - 1
 
-        logger.info(f"Retrieving song at track number {track_number} from playlist")
-        song_id = self.playlist[playlist_index]
-        song = self._get_song_from_cache_or_db(song_id)
-        logger.info(f"Successfully retrieved song: {song.artist} - {song.title} ({song.year})")
-        return song
+        logger.info(f"Retrieving book at lit number {list_number} from readinglist")
+        book_id = self.readinglist[readinglist_index]
+        book = self._get_book_from_cache_or_db(book_id)
+        logger.info(f"Successfully retrieved book: {book.author} - {book.title} ({book.year})")
+        return book
 
-    def get_current_song(self) -> Songs:
-        """Returns the current song being played.
+    def get_current_book(self) -> Books:
+        """Returns the current book being read.
 
         Returns:
-            Song: The currently playing song.
+            Book: The currently read book.
 
         Raises:
-            ValueError: If the playlist is empty.
+            ValueError: If the readinglist is empty.
         """
         self.check_if_empty()
-        logger.info("Retrieving the current song being played")
-        return self.get_song_by_track_number(self.current_track_number)
+        logger.info("Retrieving the current book being read")
+        return self.get_book_by_list_number(self.current_list_number)
 
-    def get_playlist_length(self) -> int:
-        """Returns the number of songs in the playlist.
+    def get_readinglist_length(self) -> int:
+        """Returns the number of books in the readinglist.
 
         Returns:
-            int: The total number of songs in the playlist.
+            int: The total number of books in the readinglist.
 
         """
-        length = len(self.playlist)
-        logger.info(f"Retrieving playlist length: {length} songs")
+        length = len(self.readinglist)
+        logger.info(f"Retrieving readinglist length: {length} books")
         return length
 
-    def get_playlist_duration(self) -> int:
+    def get_readinglist_length(self) -> int:
         """
-        Returns the total duration of the playlist in seconds using cached songs.
+        Returns the total length of the readinglist in pages using cached book.
 
         Returns:
-            int: The total duration of all songs in the playlist in seconds.
+            int: The total length of all books in the readinglist in pages.
         """
-        total_duration = sum(self._get_song_from_cache_or_db(song_id).duration for song_id in self.playlist)
-        logger.info(f"Retrieving total playlist duration: {total_duration} seconds")
+        total_duration = sum(self._get_book_from_cache_or_db(book_id).length for book_id in self.readinglist)
+        logger.info(f"Retrieving total readinglist length: {total_duration} pages")
         return total_duration
 
 
     ##################################################
-    # Playlist Movement Functions
+    # Readinglist Movement Functions
     ##################################################
 
 
-    def go_to_track_number(self, track_number: int) -> None:
-        """Sets the current track number to the specified track number.
+    def go_to_list_number(self, list_number: int) -> None:
+        """Sets the current list number to the specified list number.
 
         Args:
-            track_number (int): The track number to set as the current track.
+            list_number (int): The list number to set as the current list.
 
         Raises:
-            ValueError: If the playlist is empty or the track number is invalid.
+            ValueError: If the readinglist is empty or the list number is invalid.
 
         """
         self.check_if_empty()
-        track_number = self.validate_track_number(track_number)
-        logger.info(f"Setting current track number to {track_number}")
-        self.current_track_number = track_number
+        list_number = self.validate_list_number(list_number)
+        logger.info(f"Setting current list number to {list_number}")
+        self.current_list_number = list_number
 
-    def go_to_random_track(self) -> None:
-        """Sets the current track number to a randomly selected track.
+    def go_to_random_list(self) -> None:
+        """Sets the current list number to a randomly selected list.
 
         Raises:
-            ValueError: If the playlist is empty.
+            ValueError: If the readinglist is empty.
 
         """
         self.check_if_empty()
 
         # Get a random index using the random.org API
-        random_track = get_random(self.get_playlist_length())
+        random_list = get_random(self.get_readinglist_length())
 
-        logger.info(f"Setting current track number to random track: {random_track}")
-        self.current_track_number = random_track
+        logger.info(f"Setting current list number to random list: {random_list}")
+        self.current_list_number = random_list
 
-    def move_song_to_beginning(self, song_id: int) -> None:
-        """Moves a song to the beginning of the playlist.
-
-        Args:
-            song_id (int): The ID of the song to move.
-
-        Raises:
-            ValueError: If the playlist is empty or the song ID is invalid.
-
-        """
-        logger.info(f"Moving song with ID {song_id} to the beginning of the playlist")
-        self.check_if_empty()
-        song_id = self.validate_song_id(song_id)
-
-        self.playlist.remove(song_id)
-        self.playlist.insert(0, song_id)
-
-        logger.info(f"Successfully moved song with ID {song_id} to the beginning")
-
-    def move_song_to_end(self, song_id: int) -> None:
-        """Moves a song to the end of the playlist.
+    def move_book_to_beginning(self, book_id: int) -> None:
+        """Moves a book to the beginning of the readinglist.
 
         Args:
-            song_id (int): The ID of the song to move.
+            book_id (int): The ID of the book to move.
 
         Raises:
-            ValueError: If the playlist is empty or the song ID is invalid.
+            ValueError: If the readinglist is empty or the book ID is invalid.
 
         """
-        logger.info(f"Moving song with ID {song_id} to the end of the playlist")
+        logger.info(f"Moving book with ID {book_id} to the beginning of the readinglist")
         self.check_if_empty()
-        song_id = self.validate_song_id(song_id)
+        book_id = self.validate_book_id(book_id)
 
-        self.playlist.remove(song_id)
-        self.playlist.append(song_id)
+        self.readinglist.remove(book_id)
+        self.readinglist.insert(0, book_id)
 
-        logger.info(f"Successfully moved song with ID {song_id} to the end")
+        logger.info(f"Successfully moved book with ID {book_id} to the beginning")
 
-    def move_song_to_track_number(self, song_id: int, track_number: int) -> None:
-        """Moves a song to a specific track number in the playlist.
+    def move_book_to_end(self, book_id: int) -> None:
+        """Moves a bok to the end of the readinglist.
 
         Args:
-            song_id (int): The ID of the song to move.
-            track_number (int): The track number to move the song to (1-indexed).
+            book_id (int): The ID of the book to move.
 
         Raises:
-            ValueError: If the playlist is empty, the song ID is invalid, or the track number is out of range.
+            ValueError: If the readinglist is empty or the book ID is invalid.
 
         """
-        logger.info(f"Moving song with ID {song_id} to track number {track_number}")
+        logger.info(f"Moving book with ID {book_id} to the end of the readinglist")
         self.check_if_empty()
-        song_id = self.validate_song_id(song_id)
-        track_number = self.validate_track_number(track_number)
+        book_id = self.validate_book_id(book_id)
 
-        playlist_index = track_number - 1
+        self.readinglist.remove(book_id)
+        self.readinglist.append(book_id)
 
-        self.playlist.remove(song_id)
-        self.playlist.insert(playlist_index, song_id)
+        logger.info(f"Successfully moved book with ID {book_id} to the end")
 
-        logger.info(f"Successfully moved song with ID {song_id} to track number {track_number}")
-
-    def swap_songs_in_playlist(self, song1_id: int, song2_id: int) -> None:
-        """Swaps the positions of two songs in the playlist.
+    def move_book_to_list_number(self, book_id: int, list_number: int) -> None:
+        """Moves a book to a specific list number in the readinglist.
 
         Args:
-            song1_id (int): The ID of the first song to swap.
-            song2_id (int): The ID of the second song to swap.
+            book_id (int): The ID of the book to move.
+            list_number (int): The list number to move the book to (1-indexed).
 
         Raises:
-            ValueError: If the playlist is empty, either song ID is invalid, or attempting to swap the same song.
+            ValueError: If the readinglist is empty, the book ID is invalid, or the list number is out of range.
 
         """
-        logger.info(f"Swapping songs with IDs {song1_id} and {song2_id}")
+        logger.info(f"Moving book with ID {book_id} to list number {list_number}")
         self.check_if_empty()
-        song1_id = self.validate_song_id(song1_id)
-        song2_id = self.validate_song_id(song2_id)
+        book_id = self.validate_book_id(book_id)
+        list_number = self.validate_list_number(list_number)
 
-        if song1_id == song2_id:
-            logger.error(f"Cannot swap a song with itself: {song1_id}")
-            raise ValueError(f"Cannot swap a song with itself: {song1_id}")
+        readinglist_index = list_number - 1
 
-        index1, index2 = self.playlist.index(song1_id), self.playlist.index(song2_id)
+        self.readinglist.remove(book_id)
+        self.readinglist.insert(readinglist_index, book_id)
 
-        self.playlist[index1], self.playlist[index2] = self.playlist[index2], self.playlist[index1]
+        logger.info(f"Successfully moved book with ID {book_id} to list number {list_number}")
 
-        logger.info(f"Successfully swapped songs with IDs {song1_id} and {song2_id}")
+    def swap_books_in_readinglist(self, book1_id: int, book2_id: int) -> None:
+        """Swaps the positions of two books in the readinglist.
+
+        Args:
+            book1_id (int): The ID of the first book to swap.
+            book2_id (int): The ID of the second book to swap.
+
+        Raises:
+            ValueError: If the readinglist is empty, either book ID is invalid, or attempting to swap the same book.
+
+        """
+        logger.info(f"Swapping book with IDs {book1_id} and {book2_id}")
+        self.check_if_empty()
+        book1_id = self.validate_book_id(book1_id)
+        book2_id = self.validate_book_id(book2_id)
+
+        if book1_id == book2_id:
+            logger.error(f"Cannot swap a book with itself: {book1_id}")
+            raise ValueError(f"Cannot swap a book with itself: {book1_id}")
+
+        index1, index2 = self.readinglist.index(book1_id), self.readinglist.index(book2_id)
+
+        self.readinglist[index1], self.readinglist[index2] = self.readinglist[index2], self.readinglist[index1]
+
+        logger.info(f"Successfully swapped books with IDs {book1_id} and {book2_id}")
 
 
     ##################################################
-    # Playlist Playback Functions
+    # Readinglist Read Functions
     ##################################################
 
 
-    def play_current_song(self) -> None:
-        """Plays the current song and advances the playlist.
+    def read_current_book(self) -> None:
+        """Reads the current book and advances the readinglist.
 
         Raises:
-            ValueError: If the playlist is empty.
+            ValueError: If the readinglist is empty.
 
         """
         self.check_if_empty()
-        current_song = self.get_song_by_track_number(self.current_track_number)
+        current_book = self.get_book_by_list_number(self.current_list_number)
 
-        logger.info(f"Playing song: {current_song.title} (ID: {current_song.id}) at track number: {self.current_track_number}")
-        current_song.update_play_count()
-        logger.info(f"Updated play count for song: {current_song.title} (ID: {current_song.id})")
+        logger.info(f"Reading book: {current_book.title} (ID: {current_book.id}) at list number: {self.current_list_number}")
+        current_list.update_read_count()
+        logger.info(f"Updated read count for book: {current_list.title} (ID: {current_list.id})")
 
-        self.current_track_number = (self.current_track_number % self.get_playlist_length()) + 1
-        logger.info(f"Advanced to track number: {self.current_track_number}")
+        self.current_list_number = (self.current_list_number % self.get_readinglist_length()) + 1
+        logger.info(f"Advanced to list number: {self.current_list_number}")
 
-    def play_entire_playlist(self) -> None:
-        """Plays all songs in the playlist from the beginning.
+    def read_entire_readinglistlist(self) -> None:
+        """Reads all books in the readinglist from the beginning.
 
         Raises:
-            ValueError: If the playlist is empty.
+            ValueError: If the readinglist is empty.
 
         """
         self.check_if_empty()
-        logger.info("Starting to play the entire playlist.")
+        logger.info("Starting to read the entire readinglist.")
 
-        self.current_track_number = 1
-        for _ in range(self.get_playlist_length()):
-            self.play_current_song()
+        self.current_list_number = 1
+        for _ in range(self.get_readinglist_length()):
+            self.read_current_book()
 
-        logger.info("Finished playing the entire playlist.")
+        logger.info("Finished reading the entire readinglist.")
 
-    def play_rest_of_playlist(self) -> None:
-        """Plays the remaining songs in the playlist from the current track onward.
+    def read_rest_of_readinglist(self) -> None:
+        """Reads the remaining books in the readinglist from the current list onward.
 
         Raises:
-            ValueError: If the playlist is empty.
+            ValueError: If the readinglist is empty.
 
         """
         self.check_if_empty()
-        logger.info(f"Playing the rest of the playlist from track number: {self.current_track_number}")
+        logger.info(f"Reading the rest of the readinglist from list number: {self.current_list_number}")
 
-        for _ in range(self.get_playlist_length() - self.current_track_number + 1):
-            self.play_current_song()
+        for _ in range(self.get_readinglist_length() - self.current_list_number + 1):
+            self.read_current_book()
 
-        logger.info("Finished playing the rest of the playlist.")
+        logger.info("Finished reading the rest of the readinglist.")
 
-    def rewind_playlist(self) -> None:
-        """Resets the playlist to the first track.
+    def rewind_readinglist(self) -> None:
+        """Resets the readinglist to the first list.
 
         Raises:
-            ValueError: If the playlist is empty.
+            ValueError: If the readinglist is empty.
 
         """
         self.check_if_empty()
-        self.current_track_number = 1
-        logger.info("Rewound playlist to the first track.")
+        self.current_list_number = 1
+        logger.info("Rewound readinglist to the first list.")
 
 
     ##################################################
@@ -451,75 +451,75 @@ class PlaylistModel:
     #
     ####################################################################################################
 
-    def validate_song_id(self, song_id: int, check_in_playlist: bool = True) -> int:
+    def validate_book_id(self, book_id: int, check_in_readinglist: bool = True) -> int:
         """
-        Validates the given song ID.
+        Validates the given book ID.
 
         Args:
-            song_id (int): The song ID to validate.
-            check_in_playlist (bool, optional): If True, verifies the ID is present in the playlist.
+            book_id (int): The book ID to validate.
+            check_in_readinglist (bool, optional): If True, verifies the ID is present in the readinglist.
                                                 If False, skips that check. Defaults to True.
 
         Returns:
-            int: The validated song ID.
+            int: The validated book ID.
 
         Raises:
-            ValueError: If the song ID is not a non-negative integer,
-                        not found in the playlist (if check_in_playlist=True),
+            ValueError: If the book ID is not a non-negative integer,
+                        not found in the readinglist (if check_in_readinglist=True),
                         or not found in the database.
         """
         try:
-            song_id = int(song_id)
-            if song_id < 0:
+            book_id = int(book_id)
+            if book_id < 0:
                 raise ValueError
         except ValueError:
-            logger.error(f"Invalid song id: {song_id}")
-            raise ValueError(f"Invalid song id: {song_id}")
+            logger.error(f"Invalid book id: {book_id}")
+            raise ValueError(f"Invalid book id: {book_id}")
 
-        if check_in_playlist and song_id not in self.playlist:
-            logger.error(f"Song with id {song_id} not found in playlist")
-            raise ValueError(f"Song with id {song_id} not found in playlist")
+        if check_in_readinglist and book_id not in self.readinglist:
+            logger.error(f"Book with id {book_id} not found in readinglist")
+            raise ValueError(f"Book with id {book_id} not found in readinglist")
 
         try:
-            self._get_song_from_cache_or_db(song_id)
+            self._get_book_from_cache_or_db(book_id)
         except Exception as e:
-            logger.error(f"Song with id {song_id} not found in database: {e}")
-            raise ValueError(f"Song with id {song_id} not found in database")
+            logger.error(f"Book with id {book_id} not found in database: {e}")
+            raise ValueError(f"Book with id {book_id} not found in database")
 
-        return song_id
+        return book_id
 
-    def validate_track_number(self, track_number: int) -> int:
+    def validate_list_number(self, list_number: int) -> int:
         """
-        Validates the given track number, ensuring it is within the playlist's range.
+        Validates the given list number, ensuring it is within the readinglist's range.
 
         Args:
-            track_number (int): The track number to validate.
+            list_number (int): The list number to validate.
 
         Returns:
-            int: The validated track number.
+            int: The validated list number.
 
         Raises:
-            ValueError: If the track number is not a valid positive integer or is out of range.
+            ValueError: If the list number is not a valid positive integer or is out of range.
 
         """
         try:
-            track_number = int(track_number)
-            if not (1 <= track_number <= self.get_playlist_length()):
-                raise ValueError(f"Invalid track number: {track_number}")
+            list_number = int(list_number)
+            if not (1 <= list_number <= self.get_readinglist_length()):
+                raise ValueError(f"Invalid list number: {list_number}")
         except ValueError as e:
-            logger.error(f"Invalid track number: {track_number}")
-            raise ValueError(f"Invalid track number: {track_number}") from e
+            logger.error(f"Invalid list number: {list_number}")
+            raise ValueError(f"Invalid list number: {list_number}") from e
 
-        return track_number
+        return list_number
 
     def check_if_empty(self) -> None:
         """
-        Checks if the playlist is empty and raises a ValueError if it is.
+        Checks if the readinglist is empty and raises a ValueError if it is.
 
         Raises:
-            ValueError: If the playlist is empty.
+            ValueError: If the readinglist is empty.
 
         """
-        if not self.playlist:
-            logger.error("Playlist is empty")
-            raise ValueError("Playlist is empty")
+        if not self.readinglist:
+            logger.error("Readinglist is empty")
+            raise ValueError("Readinglist is empty")
