@@ -1,7 +1,7 @@
 import pytest
 
-from final.readinglist.readinglist.models.readinglist_model import PlaylistModel
-from final.readinglist.readinglist.models.book_model import Songs
+from readinglist.models.readinglist_model import PlaylistModel
+from readinglist.models.book_model import Songs
 
 
 @pytest.fixture()

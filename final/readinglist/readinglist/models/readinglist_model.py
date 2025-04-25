@@ -3,7 +3,7 @@ import os
 import time
 from typing import List
 
-from final.readinglist.readinglist.models.book_model import Books
+from readinglist.models.book_model import Books
 from readinglist.utils.api_utils import get_random
 from readinglist.utils.logger import configure_logger
 
