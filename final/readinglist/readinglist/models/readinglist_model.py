@@ -396,7 +396,7 @@ class ReadinglistModel:
         self.current_list_number = (self.current_list_number % self.get_readinglist_length()) + 1
         logger.info(f"Advanced to list number: {self.current_list_number}")
 
-    def read_entire_readinglistlist(self) -> None:
+    def read_entire_readinglist(self) -> None:
         """Reads all books in the readinglist from the beginning.
 
         Raises:
