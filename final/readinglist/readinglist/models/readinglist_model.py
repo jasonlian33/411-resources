@@ -390,8 +390,8 @@ class ReadinglistModel:
         current_book = self.get_book_by_list_number(self.current_list_number)
 
         logger.info(f"Reading book: {current_book.title} (ID: {current_book.id}) at list number: {self.current_list_number}")
-        current_list.update_read_count()
-        logger.info(f"Updated read count for book: {current_list.title} (ID: {current_list.id})")
+        current_book.update_read_count()
+        logger.info(f"Updated read count for book: {current_book.title} (ID: {current_book.id})")
 
         self.current_list_number = (self.current_list_number % self.get_readinglist_length()) + 1
         logger.info(f"Advanced to list number: {self.current_list_number}")
