@@ -5,8 +5,8 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from config import ProductionConfig
 
 from readinglist.db import db
-from final.readinglist.readinglist.models.book_model import Songs
-from final.readinglist.readinglist.models.readinglist_model import PlaylistModel
+from readinglist.models.book_model import Books
+from readinglist.models.readinglist_model import ReadinglistModel
 from readinglist.models.user_model import Users
 from readinglist.utils.logger import configure_logger
 
@@ -50,7 +50,7 @@ def create_app(config_class=ProductionConfig) -> Flask:
             "message": "Authentication required"
         }), 401)
 
-    playlist_model = PlaylistModel()
+    readinglist_model = ReadinglistModel()
 
     @app.route('/api/health', methods=['GET'])
     def healthcheck() -> Response:
@@ -259,33 +259,33 @@ def create_app(config_class=ProductionConfig) -> Flask:
 
     ##########################################################
     #
-    # Songs
+    # Books
     #
     ##########################################################
 
-    @app.route('/api/reset-songs', methods=['DELETE'])
-    def reset_songs() -> Response:
-        """Recreate the songs table to delete songs.
+    @app.route('/api/reset-books', methods=['DELETE'])
+    def reset_books() -> Response:
+        """Recreate the books table to delete books.
 
         Returns:
-            JSON response indicating the success of recreating the Songs table.
+            JSON response indicating the success of recreating the Books table.
 
         Raises:
-            500 error if there is an issue recreating the Songs table.
+            500 error if there is an issue recreating the Books table.
         """
         try:
-            app.logger.info("Received request to recreate Songs table")
+            app.logger.info("Received request to recreate Books table")
             with app.app_context():
-                Songs.__table__.drop(db.engine)
-                Songs.__table__.create(db.engine)
-            app.logger.info("Songs table recreated successfully")
+                Books.__table__.drop(db.engine)
+                Books.__table__.create(db.engine)
+            app.logger.info("Books table recreated successfully")
             return make_response(jsonify({
                 "status": "success",
-                "message": f"Songs table recreated successfully"
+                "message": f"Books table recreated successfully"
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Songs table recreation failed: {e}")
+            app.logger.error(f"Books table recreation failed: {e}")
             return make_response(jsonify({
                 "status": "error",
                 "message": "An internal error occurred while deleting users",
@@ -293,32 +293,32 @@ def create_app(config_class=ProductionConfig) -> Flask:
             }), 500)
 
 
-    @app.route('/api/create-song', methods=['POST'])
+    @app.route('/api/create-book', methods=['POST'])
     @login_required
-    def add_song() -> Response:
-        """Route to add a new song to the catalog.
+    def add_book() -> Response:
+        """Route to add a new book to the catalog.
 
         Expected JSON Input:
-            - artist (str): The artist's name.
-            - title (str): The song title.
-            - year (int): The year the song was released.
-            - genre (str): The genre of the song.
-            - duration (int): The duration of the song in seconds.
+            - author (str): The author's name.
+            - title (str): The book title.
+            - year (int): The year the book was released.
+            - genre (str): The genre of the book.
+            - length (int): The length of the book in pages.
 
         Returns:
-            JSON response indicating the success of the song addition.
+            JSON response indicating the success of the book addition.
 
         Raises:
             400 error if input validation fails.
-            500 error if there is an issue adding the song to the playlist.
+            500 error if there is an issue adding the book to the reading list.
 
         """
-        app.logger.info("Received request to add a new song")
+        app.logger.info("Received request to add a new book")
 
         try:
             data = request.get_json()
 
-            required_fields = ["artist", "title", "year", "genre", "duration"]
+            required_fields = ["author", "title", "year", "genre", "length"]
             missing_fields = [field for field in required_fields if field not in data]
 
             if missing_fields:
@@ -328,200 +328,200 @@ def create_app(config_class=ProductionConfig) -> Flask:
                     "message": f"Missing required fields: {', '.join(missing_fields)}"
                 }), 400)
 
-            artist = data["artist"]
+            author = data["author"]
             title = data["title"]
             year = data["year"]
             genre = data["genre"]
-            duration = data["duration"]
+            length = data["length"]
 
             if (
-                not isinstance(artist, str)
+                not isinstance(author, str)
                 or not isinstance(title, str)
                 or not isinstance(year, int)
                 or not isinstance(genre, str)
-                or not isinstance(duration, int)
+                or not isinstance(length, int)
             ):
                 app.logger.warning("Invalid input data types")
                 return make_response(jsonify({
                     "status": "error",
-                    "message": "Invalid input types: artist/title/genre should be strings, year and duration should be integers"
+                    "message": "Invalid input types: author/title/genre should be strings, year and length should be integers"
                 }), 400)
 
-            app.logger.info(f"Adding song: {artist} - {title} ({year}), Genre: {genre}, Duration: {duration}s")
-            Songs.create_song(artist=artist, title=title, year=year, genre=genre, duration=duration)
+            app.logger.info(f"Adding book: {author} - {title} ({year}), Genre: {genre}, Length: {length} pages")
+            Books.create_book(author=author, title=title, year=year, genre=genre, length=length)
 
-            app.logger.info(f"Song added successfully: {artist} - {title}")
+            app.logger.info(f"Book added successfully: {author} - {title}")
             return make_response(jsonify({
                 "status": "success",
-                "message": f"Song '{title}' by {artist} added successfully"
+                "message": f"Book '{title}' by {author} added successfully"
             }), 201)
 
         except Exception as e:
-            app.logger.error(f"Failed to add song: {e}")
+            app.logger.error(f"Failed to add book: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while adding the song",
+                "message": "An internal error occurred while adding the book",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/delete-song/<int:song_id>', methods=['DELETE'])
+    @app.route('/api/delete-book/<int:book_id>', methods=['DELETE'])
     @login_required
-    def delete_song(song_id: int) -> Response:
-        """Route to delete a song by ID.
+    def delete_book(book_id: int) -> Response:
+        """Route to delete a book by ID.
 
         Path Parameter:
-            - song_id (int): The ID of the song to delete.
+            - book_id (int): The ID of the book to delete.
 
         Returns:
             JSON response indicating success of the operation.
 
         Raises:
-            400 error if the song does not exist.
-            500 error if there is an issue removing the song from the database.
+            400 error if the book does not exist.
+            500 error if there is an issue removing the book from the database.
 
         """
         try:
-            app.logger.info(f"Received request to delete song with ID {song_id}")
+            app.logger.info(f"Received request to delete book with ID {book_id}")
 
-            # Check if the song exists before attempting to delete
-            song = Songs.get_song_by_id(song_id)
-            if not song:
-                app.logger.warning(f"Song with ID {song_id} not found.")
+            # Check if the book exists before attempting to delete
+            book = Books.get_book_by_id(book_id)
+            if not book:
+                app.logger.warning(f"Book with ID {book_id} not found.")
                 return make_response(jsonify({
                     "status": "error",
-                    "message": f"Song with ID {song_id} not found"
+                    "message": f"Book with ID {book_id} not found"
                 }), 400)
 
-            Songs.delete_song(song_id)
-            app.logger.info(f"Successfully deleted song with ID {song_id}")
+            Books.delete_book(book_id)
+            app.logger.info(f"Successfully deleted book with ID {book_id}")
 
             return make_response(jsonify({
                 "status": "success",
-                "message": f"Song with ID {song_id} deleted successfully"
+                "message": f"Book with ID {book_id} deleted successfully"
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to delete song: {e}")
+            app.logger.error(f"Failed to delete book: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while deleting the song",
+                "message": "An internal error occurred while deleting the book",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/get-all-songs-from-catalog', methods=['GET'])
+    @app.route('/api/get-all-books-from-catalog', methods=['GET'])
     @login_required
-    def get_all_songs() -> Response:
-        """Route to retrieve all songs in the catalog (non-deleted), with an option to sort by play count.
+    def get_all_books() -> Response:
+        """Route to retrieve all books in the catalog (non-deleted), with an option to sort by read count.
 
         Query Parameter:
-            - sort_by_play_count (bool, optional): If true, sort songs by play count.
+            - sort_by_read_count (bool, optional): If true, sort books by read count.
 
         Returns:
-            JSON response containing the list of songs.
+            JSON response containing the list of books.
 
         Raises:
-            500 error if there is an issue retrieving songs from the catalog.
+            500 error if there is an issue retrieving books from the catalog.
 
         """
         try:
-            # Extract query parameter for sorting by play count
-            sort_by_play_count = request.args.get('sort_by_play_count', 'false').lower() == 'true'
+            # Extract query parameter for sorting by read count
+            sort_by_read_count = request.args.get('sort_by_read_count', 'false').lower() == 'true'
 
-            app.logger.info(f"Received request to retrieve all songs from catalog (sort_by_play_count={sort_by_play_count})")
+            app.logger.info(f"Received request to retrieve all books from catalog (sort_by_read_count={sort_by_read_count})")
 
-            songs = Songs.get_all_songs(sort_by_play_count=sort_by_play_count)
+            books = Books.get_all_books(sort_by_read_count=sort_by_read_count)
 
-            app.logger.info(f"Successfully retrieved {len(songs)} songs from the catalog")
+            app.logger.info(f"Successfully retrieved {len(books)} books from the catalog")
 
             return make_response(jsonify({
                 "status": "success",
-                "message": "Songs retrieved successfully",
-                "songs": songs
+                "message": "Books retrieved successfully",
+                "books": books
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to retrieve songs: {e}")
+            app.logger.error(f"Failed to retrieve books: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while retrieving songs",
+                "message": "An internal error occurred while retrieving books",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/get-song-from-catalog-by-id/<int:song_id>', methods=['GET'])
+    @app.route('/api/get-book-from-catalog-by-id/<int:book_id>', methods=['GET'])
     @login_required
-    def get_song_by_id(song_id: int) -> Response:
-        """Route to retrieve a song by its ID.
+    def get_book_by_id(book_id: int) -> Response:
+        """Route to retrieve a book by its ID.
 
         Path Parameter:
-            - song_id (int): The ID of the song.
+            - book_id (int): The ID of the book.
 
         Returns:
-            JSON response containing the song details.
+            JSON response containing the book details.
 
         Raises:
-            400 error if the song does not exist.
-            500 error if there is an issue retrieving the song.
+            400 error if the book does not exist.
+            500 error if there is an issue retrieving the book.
 
         """
         try:
-            app.logger.info(f"Received request to retrieve song with ID {song_id}")
+            app.logger.info(f"Received request to retrieve book with ID {book_id}")
 
-            song = Songs.get_song_by_id(song_id)
-            if not song:
-                app.logger.warning(f"Song with ID {song_id} not found.")
+            book = Books.get_book_by_id(book_id)
+            if not book:
+                app.logger.warning(f"Book with ID {book_id} not found.")
                 return make_response(jsonify({
                     "status": "error",
-                    "message": f"Song with ID {song_id} not found"
+                    "message": f"Book with ID {book_id} not found"
                 }), 400)
 
-            app.logger.info(f"Successfully retrieved song: {song.title} by {song.artist} (ID {song_id})")
+            app.logger.info(f"Successfully retrieved book: {book.title} by {book.author} (ID {book_id})")
 
             return make_response(jsonify({
                 "status": "success",
-                "message": "Song retrieved successfully",
-                "song": song
+                "message": "Book retrieved successfully",
+                "book": book
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to retrieve song by ID: {e}")
+            app.logger.error(f"Failed to retrieve book by ID: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while retrieving the song",
+                "message": "An internal error occurred while retrieving the book",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/get-song-from-catalog-by-compound-key', methods=['GET'])
+    @app.route('/api/get-book-from-catalog-by-compound-key', methods=['GET'])
     @login_required
-    def get_song_by_compound_key() -> Response:
-        """Route to retrieve a song by its compound key (artist, title, year).
+    def get_book_by_compound_key() -> Response:
+        """Route to retrieve a book by its compound key (author, title, year).
 
         Query Parameters:
-            - artist (str): The artist's name.
-            - title (str): The song title.
-            - year (int): The year the song was released.
+            - author (str): The author's name.
+            - title (str): The book title.
+            - year (int): The year the book was released.
 
         Returns:
-            JSON response containing the song details.
+            JSON response containing the book details.
 
         Raises:
             400 error if required query parameters are missing or invalid.
-            500 error if there is an issue retrieving the song.
+            500 error if there is an issue retrieving the book.
 
         """
         try:
-            artist = request.args.get('artist')
+            author = request.args.get('author')
             title = request.args.get('title')
             year = request.args.get('year')
 
-            if not artist or not title or not year:
-                app.logger.warning("Missing required query parameters: artist, title, year")
+            if not author or not title or not year:
+                app.logger.warning("Missing required query parameters: author, title, year")
                 return make_response(jsonify({
                     "status": "error",
-                    "message": "Missing required query parameters: artist, title, year"
+                    "message": "Missing required query parameters: author, title, year"
                 }), 400)
 
             try:
@@ -533,104 +533,104 @@ def create_app(config_class=ProductionConfig) -> Flask:
                     "message": "Year must be an integer"
                 }), 400)
 
-            app.logger.info(f"Received request to retrieve song by compound key: {artist}, {title}, {year}")
+            app.logger.info(f"Received request to retrieve book by compound key: {author}, {title}, {year}")
 
-            song = Songs.get_song_by_compound_key(artist, title, year)
-            if not song:
-                app.logger.warning(f"Song not found: {artist} - {title} ({year})")
+            book = Books.get_book_by_compound_key(author, title, year)
+            if not book:
+                app.logger.warning(f"Book not found: {author} - {title} ({year})")
                 return make_response(jsonify({
                     "status": "error",
-                    "message": f"Song not found: {artist} - {title} ({year})"
+                    "message": f"Book not found: {author} - {title} ({year})"
                 }), 400)
 
-            app.logger.info(f"Successfully retrieved song: {song.title} by {song.artist} ({year})")
+            app.logger.info(f"Successfully retrieved book: {book.title} by {book.author} ({year})")
 
             return make_response(jsonify({
                 "status": "success",
-                "message": "Song retrieved successfully",
-                "song": song
+                "message": "Book retrieved successfully",
+                "book": book
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to retrieve song by compound key: {e}")
+            app.logger.error(f"Failed to retrieve book by compound key: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while retrieving the song",
+                "message": "An internal error occurred while retrieving the book",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/get-random-song', methods=['GET'])
+    @app.route('/api/get-random-book', methods=['GET'])
     @login_required
-    def get_random_song() -> Response:
-        """Route to retrieve a random song from the catalog.
+    def get_random_book() -> Response:
+        """Route to retrieve a random book from the catalog.
 
         Returns:
-            JSON response containing the details of a random song.
+            JSON response containing the details of a random book.
 
         Raises:
-            400 error if no songs exist in the catalog.
-            500 error if there is an issue retrieving the song
+            400 error if no books exist in the catalog.
+            500 error if there is an issue retrieving the book
 
         """
         try:
-            app.logger.info("Received request to retrieve a random song from the catalog")
+            app.logger.info("Received request to retrieve a random book from the catalog")
 
-            song = Songs.get_random_song()
-            if not song:
-                app.logger.warning("No songs found in the catalog.")
+            book = Books.get_random_book()
+            if not book:
+                app.logger.warning("No books found in the catalog.")
                 return make_response(jsonify({
                     "status": "error",
-                    "message": "No songs available in the catalog"
+                    "message": "No books available in the catalog"
                 }), 400)
 
-            app.logger.info(f"Successfully retrieved random song: {song.title} by {song.artist}")
+            app.logger.info(f"Successfully retrieved random book: {book.title} by {book.author}")
 
             return make_response(jsonify({
                 "status": "success",
-                "message": "Random song retrieved successfully",
-                "song": song
+                "message": "Random book retrieved successfully",
+                "book": book
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to retrieve random song: {e}")
+            app.logger.error(f"Failed to retrieve random book: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while retrieving a random song",
+                "message": "An internal error occurred while retrieving a random book",
                 "details": str(e)
             }), 500)
 
 
     ############################################################
     #
-    # Playlist Add / Remove
+    # Reading List Add / Remove
     #
     ############################################################
 
 
-    @app.route('/api/add-song-to-playlist', methods=['POST'])
+    @app.route('/api/add-book-to-reading-list', methods=['POST'])
     @login_required
-    def add_song_to_playlist() -> Response:
-        """Route to add a song to the playlist by compound key (artist, title, year).
+    def add_book_to_readinglist() -> Response:
+        """Route to add a book to the reading list by compound key (author, title, year).
 
         Expected JSON Input:
-            - artist (str): The artist's name.
-            - title (str): The song title.
-            - year (int): The year the song was released.
+            - author (str): The author's name.
+            - title (str): The book title.
+            - year (int): The year the book was released.
 
         Returns:
             JSON response indicating success of the addition.
 
         Raises:
-            400 error if required fields are missing or the song does not exist.
-            500 error if there is an issue adding the song to the playlist.
+            400 error if required fields are missing or the book does not exist.
+            500 error if there is an issue adding the book to the reading list.
 
         """
         try:
-            app.logger.info("Received request to add song to playlist")
+            app.logger.info("Received request to add book to reading list")
 
             data = request.get_json()
-            required_fields = ["artist", "title", "year"]
+            required_fields = ["author", "title", "year"]
             missing_fields = [field for field in required_fields if field not in data]
 
             if missing_fields:
@@ -640,7 +640,7 @@ def create_app(config_class=ProductionConfig) -> Flask:
                     "message": f"Missing required fields: {', '.join(missing_fields)}"
                 }), 400)
 
-            artist = data["artist"]
+            author = data["author"]
             title = data["title"]
 
             try:
@@ -652,56 +652,56 @@ def create_app(config_class=ProductionConfig) -> Flask:
                     "message": "Year must be a valid integer"
                 }), 400)
 
-            app.logger.info(f"Looking up song: {artist} - {title} ({year})")
-            song = Songs.get_song_by_compound_key(artist, title, year)
+            app.logger.info(f"Looking up book: {author} - {title} ({year})")
+            book = Books.get_book_by_compound_key(author, title, year)
 
-            if not song:
-                app.logger.warning(f"Song not found: {artist} - {title} ({year})")
+            if not book:
+                app.logger.warning(f"Book not found: {author} - {title} ({year})")
                 return make_response(jsonify({
                     "status": "error",
-                    "message": f"Song '{title}' by {artist} ({year}) not found in catalog"
+                    "message": f"Book '{title}' by {author} ({year}) not found in catalog"
                 }), 400)
 
-            playlist_model.add_song_to_playlist(song)
-            app.logger.info(f"Successfully added song to playlist: {artist} - {title} ({year})")
+            readinglist_model.add_book_to_readinglist(book)
+            app.logger.info(f"Successfully added book to reading list: {author} - {title} ({year})")
 
             return make_response(jsonify({
                 "status": "success",
-                "message": f"Song '{title}' by {artist} ({year}) added to playlist"
+                "message": f"Book '{title}' by {author} ({year}) added to reading list"
             }), 201)
 
         except Exception as e:
-            app.logger.error(f"Failed to add song to playlist: {e}")
+            app.logger.error(f"Failed to add book to reading list: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while adding the song to the playlist",
+                "message": "An internal error occurred while adding the book to the reading list",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/remove-song-from-playlist', methods=['DELETE'])
+    @app.route('/api/remove-book-from-reading-list', methods=['DELETE'])
     @login_required
-    def remove_song_by_song_id() -> Response:
-        """Route to remove a song from the playlist by compound key (artist, title, year).
+    def remove_book_by_book_id() -> Response:
+        """Route to remove a book from the reading list by compound key (author, title, year).
 
         Expected JSON Input:
-            - artist (str): The artist's name.
-            - title (str): The song title.
-            - year (int): The year the song was released.
+            - author (str): The author's name.
+            - title (str): The book title.
+            - year (int): The year the book was released.
 
         Returns:
             JSON response indicating success of the removal.
 
         Raises:
-            400 error if required fields are missing or the song does not exist in the playlist.
-            500 error if there is an issue removing the song.
+            400 error if required fields are missing or the book does not exist in the reading list.
+            500 error if there is an issue removing the book.
 
         """
         try:
-            app.logger.info("Received request to remove song from playlist")
+            app.logger.info("Received request to remove book from reading list")
 
             data = request.get_json()
-            required_fields = ["artist", "title", "year"]
+            required_fields = ["author", "title", "year"]
             missing_fields = [field for field in required_fields if field not in data]
 
             if missing_fields:
@@ -711,7 +711,7 @@ def create_app(config_class=ProductionConfig) -> Flask:
                     "message": f"Missing required fields: {', '.join(missing_fields)}"
                 }), 400)
 
-            artist = data["artist"]
+            author = data["author"]
             title = data["title"]
 
             try:
@@ -723,557 +723,557 @@ def create_app(config_class=ProductionConfig) -> Flask:
                     "message": "Year must be a valid integer"
                 }), 400)
 
-            app.logger.info(f"Looking up song to remove: {artist} - {title} ({year})")
-            song = Songs.get_song_by_compound_key(artist, title, year)
+            app.logger.info(f"Looking up book to remove: {author} - {title} ({year})")
+            book = Books.get_book_by_compound_key(author, title, year)
 
-            if not song:
-                app.logger.warning(f"Song not found in catalog: {artist} - {title} ({year})")
+            if not book:
+                app.logger.warning(f"Book not found in catalog: {author} - {title} ({year})")
                 return make_response(jsonify({
                     "status": "error",
-                    "message": f"Song '{title}' by {artist} ({year}) not found in catalog"
+                    "message": f"Book '{title}' by {author} ({year}) not found in catalog"
                 }), 400)
 
-            playlist_model.remove_song_by_song_id(song.id)
-            app.logger.info(f"Successfully removed song from playlist: {artist} - {title} ({year})")
+            readinglist_model.remove_book_by_book_id(book.id)
+            app.logger.info(f"Successfully removed book from reading list: {author} - {title} ({year})")
 
             return make_response(jsonify({
                 "status": "success",
-                "message": f"Song '{title}' by {artist} ({year}) removed from playlist"
+                "message": f"Book '{title}' by {author} ({year}) removed from reading list"
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to remove song from playlist: {e}")
+            app.logger.error(f"Failed to remove book from reading list: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while removing the song from the playlist",
+                "message": "An internal error occurred while removing the book from the reading list",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/remove-song-from-playlist-by-track-number/<int:track_number>', methods=['DELETE'])
+    @app.route('/api/remove-book-from-reading-list-by-selection-number/<int:selection_number>', methods=['DELETE'])
     @login_required
-    def remove_song_by_track_number(track_number: int) -> Response:
-        """Route to remove a song from the playlist by track number.
+    def remove_book_by_selection_number(selection_number: int) -> Response:
+        """Route to remove a book from the reading list by selection number.
 
         Path Parameter:
-            - track_number (int): The track number of the song to remove.
+            - selection_number (int): The selection number of the book to remove.
 
         Returns:
             JSON response indicating success of the removal.
 
         Raises:
-            404 error if the track number does not exist.
-            500 error if there is an issue removing the song.
+            404 error if the selection number does not exist.
+            500 error if there is an issue removing the book.
 
         """
         try:
-            app.logger.info(f"Received request to remove song at track number {track_number} from playlist")
+            app.logger.info(f"Received request to remove book at selection number {selection_number} from reading list")
 
-            playlist_model.remove_song_by_track_number(track_number)
+            readinglist_model.remove_book_by_selection_number(selection_number)
 
-            app.logger.info(f"Successfully removed song at track number {track_number} from playlist")
+            app.logger.info(f"Successfully removed book at selection number {selection_number} from reading list")
             return make_response(jsonify({
                 "status": "success",
-                "message": f"Song at track number {track_number} removed from playlist"
+                "message": f"Book at selection number {selection_number} removed from reading list"
             }), 200)
 
         except ValueError as e:
-            app.logger.warning(f"Track number {track_number} not found in playlist: {e}")
+            app.logger.warning(f"Selection number {selection_number} not found in reading list: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": f"Track number {track_number} not found in playlist"
+                "message": f"Selection number {selection_number} not found in reading list"
             }), 404)
 
         except Exception as e:
-            app.logger.error(f"Failed to remove song at track number {track_number}: {e}")
+            app.logger.error(f"Failed to remove book at selection number {selection_number}: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while removing the song from the playlist",
+                "message": "An internal error occurred while removing the book from the reading list",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/clear-playlist', methods=['POST'])
+    @app.route('/api/clear-reading-list', methods=['POST'])
     @login_required
-    def clear_playlist() -> Response:
-        """Route to clear all songs from the playlist.
+    def clear_readinglist() -> Response:
+        """Route to clear all books from the reading list.
 
         Returns:
             JSON response indicating success of the operation.
 
         Raises:
-            500 error if there is an issue clearing the playlist.
+            500 error if there is an issue clearing the reading list.
 
         """
         try:
-            app.logger.info("Received request to clear the playlist")
+            app.logger.info("Received request to clear the reading list")
 
-            playlist_model.clear_playlist()
+            readinglist_model.clear_readinglist()
 
-            app.logger.info("Successfully cleared the playlist")
+            app.logger.info("Successfully cleared the reading list")
             return make_response(jsonify({
                 "status": "success",
-                "message": "Playlist cleared"
+                "message": "Reading List cleared"
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to clear playlist: {e}")
+            app.logger.error(f"Failed to clear reading list: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while clearing the playlist",
+                "message": "An internal error occurred while clearing the reading list",
                 "details": str(e)
             }), 500)
 
 
     ############################################################
     #
-    # Play Playlist
+    # Read Reading List
     #
     ############################################################
 
 
-    @app.route('/api/play-current-song', methods=['POST'])
+    @app.route('/api/read-current-book', methods=['POST'])
     @login_required
-    def play_current_song() -> Response:
-        """Route to play the current song in the playlist.
+    def read_current_book() -> Response:
+        """Route to read the current book in the reading list.
 
         Returns:
             JSON response indicating success of the operation.
 
         Raises:
-            404 error if there is no current song.
-            500 error if there is an issue playing the current song.
+            404 error if there is no current book.
+            500 error if there is an issue reading the current book.
 
         """
         try:
-            app.logger.info("Received request to play the current song")
+            app.logger.info("Received request to read the current book")
 
-            current_song = playlist_model.get_current_song()
-            if not current_song:
-                app.logger.warning("No current song found in the playlist")
+            current_book = readinglist_model.get_current_book()
+            if not current_book:
+                app.logger.warning("No current book found in the reading list")
                 return make_response(jsonify({
                     "status": "error",
-                    "message": "No current song found in the playlist"
+                    "message": "No current book found in the reading list"
                 }), 404)
 
-            playlist_model.play_current_song()
-            app.logger.info(f"Now playing: {current_song.artist} - {current_song.title} ({current_song.year})")
+            readinglist_model.read_current_book()
+            app.logger.info(f"Now reading: {current_book.author} - {current_book.title} ({current_book.year})")
 
             return make_response(jsonify({
                 "status": "success",
-                "message": "Now playing current song",
-                "song": {
-                    "id": current_song.id,
-                    "artist": current_song.artist,
-                    "title": current_song.title,
-                    "year": current_song.year,
-                    "genre": current_song.genre,
-                    "duration": current_song.duration
+                "message": "Now reading current book",
+                "book": {
+                    "id": current_book.id,
+                    "author": current_book.author,
+                    "title": current_book.title,
+                    "year": current_book.year,
+                    "genre": current_book.genre,
+                    "length": current_book.length
                 }
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to play current song: {e}")
+            app.logger.error(f"Failed to read current book: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while playing the current song",
+                "message": "An internal error occurred while reading the current book",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/play-entire-playlist', methods=['POST'])
+    @app.route('/api/read-entire-reading-list', methods=['POST'])
     @login_required
-    def play_entire_playlist() -> Response:
-        """Route to play all songs in the playlist.
+    def read_entire_readinglist() -> Response:
+        """Route to read all books in the reading list.
 
         Returns:
             JSON response indicating success of the operation.
 
         Raises:
-            400 error if the playlist is empty.
-            500 error if there is an issue playing the playlist.
+            400 error if the reading list is empty.
+            500 error if there is an issue reading the reading list.
 
         """
         try:
-            app.logger.info("Received request to play the entire playlist")
+            app.logger.info("Received request to read the entire reading list")
 
-            if playlist_model.check_if_empty():
-                app.logger.warning("Cannot play playlist: No songs available")
+            if readinglist_model.check_if_empty():
+                app.logger.warning("Cannot read reading list: No books available")
                 return make_response(jsonify({
                     "status": "error",
-                    "message": "Cannot play playlist: No songs available"
+                    "message": "Cannot read reading list: No books available"
                 }), 400)
 
-            playlist_model.play_entire_playlist()
-            app.logger.info("Playing entire playlist")
+            readinglist_model.read_entire_readinglist()
+            app.logger.info("Reading entire reading list")
 
             return make_response(jsonify({
                 "status": "success",
-                "message": "Playing entire playlist"
+                "message": "Reading entire reading list"
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to play entire playlist: {e}")
+            app.logger.error(f"Failed to read entire reading list: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while playing the playlist",
+                "message": "An internal error occurred while reading the reading list",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/play-rest-of-playlist', methods=['POST'])
+    @app.route('/api/read-rest-of-reading-list', methods=['POST'])
     @login_required
-    def play_rest_of_playlist() -> Response:
-        """Route to play the rest of the playlist from the current track.
+    def read_rest_of_readinglist() -> Response:
+        """Route to read the rest of the reading list from the current selection.
 
         Returns:
             JSON response indicating success of the operation.
 
         Raises:
-            400 error if the playlist is empty or if no current song is playing.
-            500 error if there is an issue playing the rest of the playlist.
+            400 error if the reading list is empty or if no current book is reading.
+            500 error if there is an issue reading the rest of the reading list.
 
         """
         try:
-            app.logger.info("Received request to play the rest of the playlist")
+            app.logger.info("Received request to read the rest of the reading list")
 
-            if playlist_model.check_if_empty():
-                app.logger.warning("Cannot play rest of playlist: No songs available")
+            if readinglist_model.check_if_empty():
+                app.logger.warning("Cannot read rest of reading list: No books available")
                 return make_response(jsonify({
                     "status": "error",
-                    "message": "Cannot play rest of playlist: No songs available"
+                    "message": "Cannot read rest of reading list: No books available"
                 }), 400)
 
-            if not playlist_model.get_current_song():
-                app.logger.warning("No current song playing. Cannot continue playlist.")
+            if not readinglist_model.get_current_book():
+                app.logger.warning("No current book reading. Cannot continue reading list.")
                 return make_response(jsonify({
                     "status": "error",
-                    "message": "No current song playing. Cannot continue playlist."
+                    "message": "No current book reading. Cannot continue reading list."
                 }), 400)
 
-            playlist_model.play_rest_of_playlist()
-            app.logger.info("Playing rest of the playlist")
+            readinglist_model.read_rest_of_readinglist()
+            app.logger.info("Reading rest of the reading list")
 
             return make_response(jsonify({
                 "status": "success",
-                "message": "Playing rest of the playlist"
+                "message": "Reading rest of the reading list"
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to play rest of the playlist: {e}")
+            app.logger.error(f"Failed to read rest of the reading list: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while playing the rest of the playlist",
+                "message": "An internal error occurred while reading the rest of the reading list",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/rewind-playlist', methods=['POST'])
+    @app.route('/api/rewind-reading-list', methods=['POST'])
     @login_required
-    def rewind_playlist() -> Response:
-        """Route to rewind the playlist to the first song.
+    def rewind_readinglist() -> Response:
+        """Route to rewind the reading list to the first book.
 
         Returns:
             JSON response indicating success of the operation.
 
         Raises:
-            400 error if the playlist is empty.
-            500 error if there is an issue rewinding the playlist.
+            400 error if the reading list is empty.
+            500 error if there is an issue rewinding the reading list.
 
         """
         try:
-            app.logger.info("Received request to rewind the playlist")
+            app.logger.info("Received request to rewind the reading list")
 
-            if playlist_model.check_if_empty():
-                app.logger.warning("Cannot rewind: No songs in playlist")
+            if readinglist_model.check_if_empty():
+                app.logger.warning("Cannot rewind: No books in reading list")
                 return make_response(jsonify({
                     "status": "error",
-                    "message": "Cannot rewind: No songs in playlist"
+                    "message": "Cannot rewind: No books in reading list"
                 }), 400)
 
-            playlist_model.rewind_playlist()
-            app.logger.info("Playlist successfully rewound to the first song")
+            readinglist_model.rewind_readinglist()
+            app.logger.info("Reading List successfully rewound to the first book")
 
             return make_response(jsonify({
                 "status": "success",
-                "message": "Playlist rewound to the first song"
+                "message": "Reading List rewound to the first book"
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to rewind playlist: {e}")
+            app.logger.error(f"Failed to rewind reading list: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while rewinding the playlist",
+                "message": "An internal error occurred while rewinding the reading list",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/go-to-track-number/<int:track_number>', methods=['POST'])
+    @app.route('/api/go-to-selection-number/<int:selection_number>', methods=['POST'])
     @login_required
-    def go_to_track_number(track_number: int) -> Response:
-        """Route to set the playlist to start playing from a specific track number.
+    def go_to_selection_number(selection_number: int) -> Response:
+        """Route to set the reading list to start reading from a specific selection number.
 
         Path Parameter:
-            - track_number (int): The track number to set as the current song.
+            - selection_number (int): The selection number to set as the current book.
 
         Returns:
             JSON response indicating success or an error message.
 
         Raises:
-            400 error if the track number is invalid.
-            500 error if there is an issue updating the track number.
+            400 error if the selection number is invalid.
+            500 error if there is an issue updating the selection number.
         """
         try:
-            app.logger.info(f"Received request to go to track number {track_number}")
+            app.logger.info(f"Received request to go to selection number {selection_number}")
 
-            if not playlist_model.is_valid_track_number(track_number):
-                app.logger.warning(f"Invalid track number: {track_number}")
+            if not readinglist_model.is_valid_selection_number(selection_number):
+                app.logger.warning(f"Invalid selection number: {selection_number}")
                 return make_response(jsonify({
                     "status": "error",
-                    "message": f"Invalid track number: {track_number}. Please provide a valid track number."
+                    "message": f"Invalid selection number: {selection_number}. Please provide a valid selection number."
                 }), 400)
 
-            playlist_model.go_to_track_number(track_number)
-            app.logger.info(f"Playlist set to track number {track_number}")
+            readinglist_model.go_to_selection_number(selection_number)
+            app.logger.info(f"Reading List set to selection number {selection_number}")
 
             return make_response(jsonify({
                 "status": "success",
-                "message": f"Now playing from track number {track_number}"
+                "message": f"Now reading from selection number {selection_number}"
             }), 200)
 
         except ValueError as e:
-            app.logger.warning(f"Failed to set track number {track_number}: {e}")
+            app.logger.warning(f"Failed to set selection number {selection_number}: {e}")
             return make_response(jsonify({
                 "status": "error",
                 "message": str(e)
             }), 400)
 
         except Exception as e:
-            app.logger.error(f"Internal error while going to track number {track_number}: {e}")
+            app.logger.error(f"Internal error while going to selection number {selection_number}: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while changing the track number",
+                "message": "An internal error occurred while changing the selection number",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/go-to-random-track', methods=['POST'])
+    @app.route('/api/go-to-random-selection', methods=['POST'])
     @login_required
-    def go_to_random_track() -> Response:
-        """Route to set the playlist to start playing from a random track number.
+    def go_to_random_selection() -> Response:
+        """Route to set the reading list to start reading from a random selection number.
 
         Returns:
             JSON response indicating success or an error message.
 
         Raises:
-            400 error if the playlist is empty.
-            500 error if there is an issue selecting a random track.
+            400 error if the reading list is empty.
+            500 error if there is an issue selecting a random selection.
 
         """
         try:
-            app.logger.info("Received request to go to a random track")
+            app.logger.info("Received request to go to a random selection")
 
-            if playlist_model.get_playlist_length() == 0:
-                app.logger.warning("Attempted to go to a random track but the playlist is empty")
+            if readinglist_model.get_readinglist_length() == 0:
+                app.logger.warning("Attempted to go to a random selection but the reading list is empty")
                 return make_response(jsonify({
                     "status": "error",
-                    "message": "Cannot select a random track. The playlist is empty."
+                    "message": "Cannot select a random selection. The reading list is empty."
                 }), 400)
 
-            playlist_model.go_to_random_track()
-            app.logger.info(f"Playlist set to random track number {playlist_model.current_track_number}")
+            readinglist_model.go_to_random_selection()
+            app.logger.info(f"Reading List set to random selection number {readinglist_model.current_selection_number}")
 
             return make_response(jsonify({
                 "status": "success",
-                "message": f"Now playing from random track number {playlist_model.current_track_number}"
+                "message": f"Now reading from random selection number {readinglist_model.current_selection_number}"
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Internal error while selecting a random track: {e}")
+            app.logger.error(f"Internal error while selecting a random selection: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while selecting a random track",
+                "message": "An internal error occurred while selecting a random selection",
                 "details": str(e)
             }), 500)
 
 
     ############################################################
     #
-    # View Playlist
+    # View Reading List
     #
     ############################################################
 
 
-    @app.route('/api/get-all-songs-from-playlist', methods=['GET'])
+    @app.route('/api/get-all-books-from-reading-list', methods=['GET'])
     @login_required
-    def get_all_songs_from_playlist() -> Response:
-        """Retrieve all songs in the playlist.
+    def get_all_books_from_readinglist() -> Response:
+        """Retrieve all books in the reading list.
 
         Returns:
-            JSON response containing the list of songs.
+            JSON response containing the list of books.
 
         Raises:
-            500 error if there is an issue retrieving the playlist.
+            500 error if there is an issue retrieving the reading list.
 
         """
         try:
-            app.logger.info("Received request to retrieve all songs from the playlist.")
+            app.logger.info("Received request to retrieve all books from the reading list.")
 
-            songs = playlist_model.get_all_songs()
+            books = readinglist_model.get_all_books()
 
-            app.logger.info(f"Successfully retrieved {len(songs)} songs from the playlist.")
+            app.logger.info(f"Successfully retrieved {len(books)} books from the reading list.")
             return make_response(jsonify({
                 "status": "success",
-                "songs": songs
+                "books": books
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to retrieve songs from playlist: {e}")
+            app.logger.error(f"Failed to retrieve books from reading list: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while retrieving the playlist",
+                "message": "An internal error occurred while retrieving the reading list",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/get-song-from-playlist-by-track-number/<int:track_number>', methods=['GET'])
+    @app.route('/api/get-book-from-reading-list-by-selection-number/<int:selection_number>', methods=['GET'])
     @login_required
-    def get_song_by_track_number(track_number: int) -> Response:
-        """Retrieve a song from the playlist by track number.
+    def get_book_by_selection_number(selection_number: int) -> Response:
+        """Retrieve a book from the reading list by selection number.
 
         Path Parameter:
-            - track_number (int): The track number of the song.
+            - selection_number (int): The selection number of the book.
 
         Returns:
-            JSON response containing song details.
+            JSON response containing book details.
 
         Raises:
-            404 error if the track number is not found.
-            500 error if there is an issue retrieving the song.
+            404 error if the selection number is not found.
+            500 error if there is an issue retrieving the book.
 
         """
         try:
-            app.logger.info(f"Received request to retrieve song at track number {track_number}.")
+            app.logger.info(f"Received request to retrieve book at selection number {selection_number}.")
 
-            song = playlist_model.get_song_by_track_number(track_number)
+            book = readinglist_model.get_book_by_selection_number(selection_number)
 
-            app.logger.info(f"Successfully retrieved song: {song.artist} - {song.title} (Track {track_number}).")
+            app.logger.info(f"Successfully retrieved book: {book.author} - {book.title} (Selection {selection_number}).")
             return make_response(jsonify({
                 "status": "success",
-                "song": song
+                "book": book
             }), 200)
 
         except ValueError as e:
-            app.logger.warning(f"Track number {track_number} not found: {e}")
+            app.logger.warning(f"Selection number {selection_number} not found: {e}")
             return make_response(jsonify({
                 "status": "error",
                 "message": str(e)
             }), 404)
 
         except Exception as e:
-            app.logger.error(f"Failed to retrieve song by track number {track_number}: {e}")
+            app.logger.error(f"Failed to retrieve book by selection number {selection_number}: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while retrieving the song",
+                "message": "An internal error occurred while retrieving the book",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/get-current-song', methods=['GET'])
+    @app.route('/api/get-current-book', methods=['GET'])
     @login_required
-    def get_current_song() -> Response:
-        """Retrieve the current song being played.
+    def get_current_book() -> Response:
+        """Retrieve the current book being readed.
 
         Returns:
-            JSON response containing current song details.
+            JSON response containing current book details.
 
         Raises:
-            500 error if there is an issue retrieving the current song.
+            500 error if there is an issue retrieving the current book.
 
         """
         try:
-            app.logger.info("Received request to retrieve the current song.")
+            app.logger.info("Received request to retrieve the current book.")
 
-            current_song = playlist_model.get_current_song()
+            current_book = readinglist_model.get_current_book()
 
-            app.logger.info(f"Successfully retrieved current song: {current_song.artist} - {current_song.title}.")
+            app.logger.info(f"Successfully retrieved current book: {current_book.author} - {current_book.title}.")
             return make_response(jsonify({
                 "status": "success",
-                "current_song": current_song
+                "current_book": current_book
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to retrieve current song: {e}")
+            app.logger.error(f"Failed to retrieve current book: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while retrieving the current song",
+                "message": "An internal error occurred while retrieving the current book",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/get-playlist-length-duration', methods=['GET'])
+    @app.route('/api/get-reading-list-length', methods=['GET'])
     @login_required
-    def get_playlist_length_and_duration() -> Response:
-        """Retrieve the length (number of songs) and total duration of the playlist.
+    def get_readinglist_length() -> Response:
+        """Retrieve the length (number of books) and total length in pages of the reading list.
 
         Returns:
-            JSON response containing the playlist length and total duration.
+            JSON response containing the reading list length and total length in pages.
 
         Raises:
-            500 error if there is an issue retrieving playlist information.
+            500 error if there is an issue retrieving reading list information.
 
         """
         try:
-            app.logger.info("Received request to retrieve playlist length and duration.")
+            app.logger.info("Received request to retrieve reading list length in books and length in pages.")
 
-            playlist_length = playlist_model.get_playlist_length()
-            playlist_duration = playlist_model.get_playlist_duration()
+            readinglist_length = readinglist_model.get_readinglist_length()
+            readinglist_page_length = readinglist_model.get_readinglist_length()
 
-            app.logger.info(f"Playlist contains {playlist_length} songs with a total duration of {playlist_duration} seconds.")
+            app.logger.info(f"Reading List contains {readinglist_length} books with a total length of {readinglist_page_length} pages.")
             return make_response(jsonify({
                 "status": "success",
-                "playlist_length": playlist_length,
-                "playlist_duration": playlist_duration
+                "readinglist_length": readinglist_length,
+                "readinglist_length": readinglist_page_length
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to retrieve playlist length and duration: {e}")
+            app.logger.error(f"Failed to retrieve reading list length and total page length: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while retrieving playlist details",
+                "message": "An internal error occurred while retrieving reading list details",
                 "details": str(e)
             }), 500)
 
 
     ############################################################
     #
-    # Arrange Playlist
+    # Arrange Reading List
     #
     ############################################################
 
 
-    @app.route('/api/move-song-to-beginning', methods=['POST'])
+    @app.route('/api/move-book-to-beginning', methods=['POST'])
     @login_required
-    def move_song_to_beginning() -> Response:
-        """Move a song to the beginning of the playlist.
+    def move_book_to_beginning() -> Response:
+        """Move a book to the beginning of the reading list.
 
         Expected JSON Input:
-            - artist (str): The artist of the song.
-            - title (str): The title of the song.
-            - year (int): The year the song was released.
+            - author (str): The author of the book.
+            - title (str): The title of the book.
+            - year (int): The year the book was released.
 
         Returns:
             Response: JSON response indicating success or an error message.
 
         Raises:
             400 error if required fields are missing.
-            500 error if an error occurs while updating the playlist.
+            500 error if an error occurs while updating the reading list.
 
         """
         try:
             data = request.get_json()
 
-            required_fields = ["artist", "title", "year"]
+            required_fields = ["author", "title", "year"]
             missing_fields = [field for field in required_fields if field not in data]
 
             if missing_fields:
@@ -1283,49 +1283,49 @@ def create_app(config_class=ProductionConfig) -> Flask:
                     "message": f"Missing required fields: {', '.join(missing_fields)}"
                 }), 400)
 
-            artist, title, year = data["artist"], data["title"], data["year"]
-            app.logger.info(f"Received request to move song to beginning: {artist} - {title} ({year})")
+            author, title, year = data["author"], data["title"], data["year"]
+            app.logger.info(f"Received request to move book to beginning: {author} - {title} ({year})")
 
-            song = Songs.get_song_by_compound_key(artist, title, year)
-            playlist_model.move_song_to_beginning(song.id)
+            book = Books.get_book_by_compound_key(author, title, year)
+            readinglist_model.move_book_to_beginning(book.id)
 
-            app.logger.info(f"Successfully moved song to beginning: {artist} - {title} ({year})")
+            app.logger.info(f"Successfully moved book to beginning: {author} - {title} ({year})")
             return make_response(jsonify({
                 "status": "success",
-                "message": f"Song '{title}' by {artist} moved to beginning"
+                "message": f"Book '{title}' by {author} moved to beginning"
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to move song to beginning: {e}")
+            app.logger.error(f"Failed to move book to beginning: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while moving the song",
+                "message": "An internal error occurred while moving the book",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/move-song-to-end', methods=['POST'])
+    @app.route('/api/move-book-to-end', methods=['POST'])
     @login_required
-    def move_song_to_end() -> Response:
-        """Move a song to the end of the playlist.
+    def move_book_to_end() -> Response:
+        """Move a book to the end of the reading list.
 
         Expected JSON Input:
-            - artist (str): The artist of the song.
-            - title (str): The title of the song.
-            - year (int): The year the song was released.
+            - author (str): The author of the book.
+            - title (str): The title of the book.
+            - year (int): The year the book was released.
 
         Returns:
             Response: JSON response indicating success or an error message.
 
         Raises:
             400 error if required fields are missing.
-            500 if an error occurs while updating the playlist.
+            500 if an error occurs while updating the reading list.
 
         """
         try:
             data = request.get_json()
 
-            required_fields = ["artist", "title", "year"]
+            required_fields = ["author", "title", "year"]
             missing_fields = [field for field in required_fields if field not in data]
 
             if missing_fields:
@@ -1335,49 +1335,49 @@ def create_app(config_class=ProductionConfig) -> Flask:
                     "message": f"Missing required fields: {', '.join(missing_fields)}"
                 }), 400)
 
-            artist, title, year = data["artist"], data["title"], data["year"]
-            app.logger.info(f"Received request to move song to end: {artist} - {title} ({year})")
+            author, title, year = data["author"], data["title"], data["year"]
+            app.logger.info(f"Received request to move book to end: {author} - {title} ({year})")
 
-            song = Songs.get_song_by_compound_key(artist, title, year)
-            playlist_model.move_song_to_end(song.id)
+            book = Books.get_book_by_compound_key(author, title, year)
+            readinglist_model.move_book_to_end(book.id)
 
-            app.logger.info(f"Successfully moved song to end: {artist} - {title} ({year})")
+            app.logger.info(f"Successfully moved book to end: {author} - {title} ({year})")
             return make_response(jsonify({
                 "status": "success",
-                "message": f"Song '{title}' by {artist} moved to end"
+                "message": f"Book '{title}' by {author} moved to end"
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to move song to end: {e}")
+            app.logger.error(f"Failed to move book to end: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while moving the song",
+                "message": "An internal error occurred while moving the book",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/move-song-to-track-number', methods=['POST'])
+    @app.route('/api/move-book-to-selection-number', methods=['POST'])
     @login_required
-    def move_song_to_track_number() -> Response:
-        """Move a song to a specific track number in the playlist.
+    def move_book_to_selection_number() -> Response:
+        """Move a book to a specific selection number in the reading list.
 
         Expected JSON Input:
-            - artist (str): The artist of the song.
-            - title (str): The title of the song.
-            - year (int): The year the song was released.
-            - track_number (int): The new track number to move the song to.
+            - author (str): The author of the book.
+            - title (str): The title of the book.
+            - year (int): The year the book was released.
+            - selection_number (int): The new selection number to move the book to.
 
         Returns:
             Response: JSON response indicating success or an error message.
 
         Raises:
             400 error if required fields are missing.
-            500 error if an error occurs while updating the playlist.
+            500 error if an error occurs while updating the reading list.
         """
         try:
             data = request.get_json()
 
-            required_fields = ["artist", "title", "year", "track_number"]
+            required_fields = ["author", "title", "year", "selection_number"]
             missing_fields = [field for field in required_fields if field not in data]
 
             if missing_fields:
@@ -1387,47 +1387,47 @@ def create_app(config_class=ProductionConfig) -> Flask:
                     "message": f"Missing required fields: {', '.join(missing_fields)}"
                 }), 400)
 
-            artist, title, year, track_number = data["artist"], data["title"], data["year"], data["track_number"]
-            app.logger.info(f"Received request to move song to track number {track_number}: {artist} - {title} ({year})")
+            author, title, year, selection_number = data["author"], data["title"], data["year"], data["selection_number"]
+            app.logger.info(f"Received request to move book to selection number {selection_number}: {author} - {title} ({year})")
 
-            song = Songs.get_song_by_compound_key(artist, title, year)
-            playlist_model.move_song_to_track_number(song.id, track_number)
+            book = Books.get_book_by_compound_key(author, title, year)
+            readinglist_model.move_book_to_selection_number(book.id, selection_number)
 
-            app.logger.info(f"Successfully moved song to track {track_number}: {artist} - {title} ({year})")
+            app.logger.info(f"Successfully moved book to selection {selection_number}: {author} - {title} ({year})")
             return make_response(jsonify({
                 "status": "success",
-                "message": f"Song '{title}' by {artist} moved to track {track_number}"
+                "message": f"Book '{title}' by {author} moved to selection {selection_number}"
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to move song to track number: {e}")
+            app.logger.error(f"Failed to move book to selection number: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while moving the song",
+                "message": "An internal error occurred while moving the book",
                 "details": str(e)
             }), 500)
 
 
-    @app.route('/api/swap-songs-in-playlist', methods=['POST'])
+    @app.route('/api/swap-books-in-reading-list', methods=['POST'])
     @login_required
-    def swap_songs_in_playlist() -> Response:
-        """Swap two songs in the playlist by their track numbers.
+    def swap_books_in_readinglist() -> Response:
+        """Swap two books in the reading list by their selection numbers.
 
         Expected JSON Input:
-            - track_number_1 (int): The track number of the first song.
-            - track_number_2 (int): The track number of the second song.
+            - selection_number_1 (int): The selection number of the first book.
+            - selection_number_2 (int): The selection number of the second book.
 
         Returns:
             Response: JSON response indicating success or an error message.
 
         Raises:
             400 error if required fields are missing.
-            500 error if an error occurs while swapping songs in the playlist.
+            500 error if an error occurs while swapping books in the reading list.
         """
         try:
             data = request.get_json()
 
-            required_fields = ["track_number_1", "track_number_2"]
+            required_fields = ["selection_number_1", "selection_number_2"]
             missing_fields = [field for field in required_fields if field not in data]
 
             if missing_fields:
@@ -1437,24 +1437,24 @@ def create_app(config_class=ProductionConfig) -> Flask:
                     "message": f"Missing required fields: {', '.join(missing_fields)}"
                 }), 400)
 
-            track_number_1, track_number_2 = data["track_number_1"], data["track_number_2"]
-            app.logger.info(f"Received request to swap songs at track numbers {track_number_1} and {track_number_2}")
+            selection_number_1, selection_number_2 = data["selection_number_1"], data["selection_number_2"]
+            app.logger.info(f"Received request to swap books at selection numbers {selection_number_1} and {selection_number_2}")
 
-            song_1 = playlist_model.get_song_by_track_number(track_number_1)
-            song_2 = playlist_model.get_song_by_track_number(track_number_2)
-            playlist_model.swap_songs_in_playlist(song_1.id, song_2.id)
+            book_1 = readinglist_model.get_book_by_selection_number(selection_number_1)
+            book_2 = readinglist_model.get_book_by_selection_number(selection_number_2)
+            readinglist_model.swap_books_in_readinglist(book_1.id, book_2.id)
 
-            app.logger.info(f"Successfully swapped songs: {song_1.artist} - {song_1.title} <-> {song_2.artist} - {song_2.title}")
+            app.logger.info(f"Successfully swapped books: {book_1.author} - {book_1.title} <-> {book_2.author} - {book_2.title}")
             return make_response(jsonify({
                 "status": "success",
-                "message": f"Swapped songs: {song_1.artist} - {song_1.title} <-> {song_2.artist} - {song_2.title}"
+                "message": f"Swapped books: {book_1.author} - {book_1.title} <-> {book_2.author} - {book_2.title}"
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to swap songs in playlist: {e}")
+            app.logger.error(f"Failed to swap books in reading list: {e}")
             return make_response(jsonify({
                 "status": "error",
-                "message": "An internal error occurred while swapping songs",
+                "message": "An internal error occurred while swapping books",
                 "details": str(e)
             }), 500)
 
@@ -1467,31 +1467,31 @@ def create_app(config_class=ProductionConfig) -> Flask:
     ############################################################
 
 
-    @app.route('/api/song-leaderboard', methods=['GET'])
-    def get_song_leaderboard() -> Response:
+    @app.route('/api/book-leaderboard', methods=['GET'])
+    def get_book_leaderboard() -> Response:
         """
-        Route to retrieve a leaderboard of songs sorted by play count.
+        Route to retrieve a leaderboard of books sorted by read count.
 
         Returns:
-            JSON response with a sorted leaderboard of songs.
+            JSON response with a sorted leaderboard of books.
 
         Raises:
             500 error if there is an issue generating the leaderboard.
 
         """
         try:
-            app.logger.info("Received request to generate song leaderboard")
+            app.logger.info("Received request to generate book leaderboard")
 
-            leaderboard_data = Songs.get_all_songs(sort_by_play_count=True)
+            leaderboard_data = Books.get_all_books(sort_by_read_count=True)
 
-            app.logger.info(f"Successfully generated song leaderboard with {len(leaderboard_data)} entries")
+            app.logger.info(f"Successfully generated book leaderboard with {len(leaderboard_data)} entries")
             return make_response(jsonify({
                 "status": "success",
                 "leaderboard": leaderboard_data
             }), 200)
 
         except Exception as e:
-            app.logger.error(f"Failed to generate song leaderboard: {e}")
+            app.logger.error(f"Failed to generate book leaderboard: {e}")
             return make_response(jsonify({
                 "status": "error",
                 "message": "An internal error occurred while generating the leaderboard",
