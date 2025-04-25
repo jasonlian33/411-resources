@@ -115,7 +115,7 @@ class Books(db.Model):
         logger.info(f"Received request to delete song with ID {book_id}")
 
         try:
-            book = cls.query.get(book_id)
+            book = db.session.get(cls, book_id)
             if not book:
                 logger.warning(f"Attempted to delete non-existent song with ID {book_id}")
                 raise ValueError(f"Song with ID {book_id} not found")
@@ -147,7 +147,7 @@ class Books(db.Model):
         logger.info(f"Attempting to retrieve song with ID {book_id}")
 
         try:
-            book = cls.query.get(book_id)
+            book = db.session.get(cls, book_id)
 
             if not book:
                 logger.info(f"Book with ID {book_id} not found")
@@ -215,7 +215,7 @@ class Books(db.Model):
         try:
             query = cls.query
             if sort_by_read_count:
-                query = query.order_by(cls.play_count.desc())
+                query = query.order_by(cls.read_count.desc())
 
             books = query.all()
 
@@ -274,12 +274,12 @@ class Books(db.Model):
         logger.info(f"Attempting to update play count for book with ID {self.id}")
 
         try:
-            book = Books.query.get(self.id)
+            book = db.session.get(Books, self.id)
             if not book:
                 logger.warning(f"Cannot update read count: Book with ID {self.id} not found.")
                 raise ValueError(f"Book with ID {self.id} not found")
 
-            book.play_count += 1
+            book.read_count += 1
             db.session.commit()
 
             logger.info(f"Read count incremented for book with ID: {self.id}")
