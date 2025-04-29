@@ -17,8 +17,8 @@ class Books(db.Model):
     This model maps to the 'books' table and stores metadata such as author,
     title, genre, release year, and length. It also tracks read count.
 
-    Used in a Flask-SQLAlchemy application for playlist management,
-    user interaction, and data-driven song operations.
+    Used in a Flask-SQLAlchemy application for readinglist management,
+    user interaction, and data-driven book operations.
     """
 
     __tablename__ = "Books"
@@ -61,10 +61,10 @@ class Books(db.Model):
             length (int): The length of the book in pages.
 
         Raises:
-            ValueError: If any field is invalid or if a song with the same compound key already exists.
+            ValueError: If any field is invalid or if a book with the same compound key already exists.
             SQLAlchemyError: For any other database-related issues.
         """
-        logger.info(f"Received request to create song: {author} - {title} ({year})")
+        logger.info(f"Received request to create book: {author} - {title} ({year})")
 
         try:
             book = Books(
@@ -80,23 +80,23 @@ class Books(db.Model):
             raise
 
         try:
-            # Check for existing song with same compound key (artist, title, year)
+            # Check for existing book with same compound key (author, title, year)
             existing = Books.query.filter_by(author=author.strip(), title=title.strip(), year=year).first()
             if existing:
-                logger.error(f"Song already exists: {author} - {title} ({year})")
-                raise ValueError(f"Song with artist '{author}', title '{title}', and year {year} already exists.")
+                logger.error(f"Book already exists: {author} - {title} ({year})")
+                raise ValueError(f"Book with author '{author}', title '{title}', and year {year} already exists.")
 
             db.session.add(book)
             db.session.commit()
-            logger.info(f"Song successfully added: {author} - {title} ({year})")
+            logger.info(f"Book successfully added: {author} - {title} ({year})")
 
         except IntegrityError:
-            logger.error(f"Song already exists: {author} - {title} ({year})")
+            logger.error(f"Book already exists: {author} - {title} ({year})")
             db.session.rollback()
-            raise ValueError(f"Song with artist '{author}', title '{title}', and year {year} already exists.")
+            raise ValueError(f"Book with author '{author}', title '{title}', and year {year} already exists.")
 
         except SQLAlchemyError as e:
-            logger.error(f"Database error while creating song: {e}")
+            logger.error(f"Database error while creating book: {e}")
             db.session.rollback()
             raise
 
@@ -112,20 +112,20 @@ class Books(db.Model):
             ValueError: If the book with the given ID does not exist.
             SQLAlchemyError: For any database-related issues.
         """
-        logger.info(f"Received request to delete song with ID {book_id}")
+        logger.info(f"Received request to delete book with ID {book_id}")
 
         try:
             book = db.session.get(cls, book_id)
             if not book:
-                logger.warning(f"Attempted to delete non-existent song with ID {book_id}")
-                raise ValueError(f"Song with ID {book_id} not found")
+                logger.warning(f"Attempted to delete non-existent book with ID {book_id}")
+                raise ValueError(f"Book with ID {book_id} not found")
 
             db.session.delete(book)
             db.session.commit()
-            logger.info(f"Successfully deleted song with ID {book_id}")
+            logger.info(f"Successfully deleted book with ID {book_id}")
 
         except SQLAlchemyError as e:
-            logger.error(f"Database error while deleting song with ID {book_id}: {e}")
+            logger.error(f"Database error while deleting book with ID {book_id}: {e}")
             db.session.rollback()
             raise
 
@@ -144,7 +144,7 @@ class Books(db.Model):
             ValueError: If no book with the given ID is found.
             SQLAlchemyError: If a database error occurs.
         """
-        logger.info(f"Attempting to retrieve song with ID {book_id}")
+        logger.info(f"Attempting to retrieve book with ID {book_id}")
 
         try:
             book = db.session.get(cls, book_id)
@@ -153,7 +153,7 @@ class Books(db.Model):
                 logger.info(f"Book with ID {book_id} not found")
                 raise ValueError(f"Book with ID {book_id} not found")
 
-            logger.info(f"Successfully retrieved song: {book.author} - {book.title} ({book.year})")
+            logger.info(f"Successfully retrieved book: {book.author} - {book.title} ({book.year})")
             return book
 
         except SQLAlchemyError as e:
@@ -166,9 +166,9 @@ class Books(db.Model):
         Retrieves a book from the catalog by its compound key (author, title, year).
 
         Args:
-            author (str): The author of the song.
-            title (str): The title of the song.
-            year (int): The year the song was released.
+            author (str): The author of the book.
+            title (str): The title of the book.
+            year (int): The year the book was released.
 
         Returns:
             Books: The book instance matching the provided compound key.
@@ -191,7 +191,7 @@ class Books(db.Model):
 
         except SQLAlchemyError as e:
             logger.error(
-                f"Database error while retrieving song by compound key "
+                f"Database error while retrieving book by compound key "
                 f"(author '{author}', title '{title}', year {year}): {e}"
             )
             raise
@@ -271,7 +271,7 @@ class Books(db.Model):
             SQLAlchemyError: If any database error occurs.
         """
 
-        logger.info(f"Attempting to update play count for book with ID {self.id}")
+        logger.info(f"Attempting to update read count for book with ID {self.id}")
 
         try:
             book = db.session.get(Books, self.id)
