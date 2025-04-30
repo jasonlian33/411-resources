@@ -239,7 +239,7 @@ class ReadinglistModel:
         logger.info(f"Retrieving readinglist length: {length} books")
         return length
 
-    def get_readinglist_length(self) -> int:
+    def get_readinglist_page_count(self) -> int:
         """
         Returns the total length of the readinglist in pages using cached book.
 
