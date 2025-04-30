@@ -66,7 +66,7 @@ def test_add_duplicate_book_to_readinglist(readinglist_model, book_mockingbird, 
 
 def test_remove_book_from_readinglist_by_book_id(readinglist_model, mocker):
     """Test removing a book from the readinglist by book_id."""
-    mocker.patch("readinglist.models.readinglist_model.Book.get_book_by_id", return_value=book_mockingbird)
+    mocker.patch("readinglist.models.readinglist_model.Books.get_book_by_id", return_value=book_mockingbird)
 
     readinglist_model.readinglist = [1,2]
 
@@ -216,11 +216,11 @@ def test_get_readinglist_length(readinglist_model):
     assert readinglist_model.get_readinglist_length() == 2, "Expected readinglist length to be 2"
 
 
-def test_get_readinglist_duration(readinglist_model, sample_readinglist, mocker):
-    """Test getting the total duration of the readinglist."""
+def test_get_readinglist_page_count(readinglist_model, sample_readinglist, mocker):
+    """Test getting the total page count of the readinglist."""
     mocker.patch("readinglist.models.readinglist_model.ReadinglistModel._get_book_from_cache_or_db", side_effect=sample_readinglist)
     readinglist_model.readinglist.extend([1, 2])
-    assert readinglist_model.get_readinglist_length() == 609, "Expected readinglist duration to be 609 seconds"
+    assert readinglist_model.get_readinglist_page_count() == 609, "Expected readinglist page count to be 609 seconds"
 
 
 ##################################################
@@ -309,27 +309,28 @@ def test_validate_list_number_invalid(readinglist_model, list_number, expected_e
 
 
 def test_play_current_book(readinglist_model, sample_readinglist, mocker):
-    """Test playing the current book."""
-    mock_update_read_count = mocker.patch("readinglist.models.readinglist_model.Books.update_read_count")
-    mocker.patch("readinglist.models.readinglist_model.Books.get_book_by_id", side_effect=sample_readinglist)
+    """Test reading the current book."""
+    mock_update_read_count = mocker.patch(
+        "readinglist.models.readinglist_model.Books.update_read_count"
+    )
+    mocker.patch(
+        "readinglist.models.readinglist_model.Books.get_book_by_id",
+        side_effect=sample_readinglist
+    )
 
     readinglist_model.readinglist.extend([1, 2])
 
     readinglist_model.read_current_book()
 
-    # Assert that CURRENT_LIST_NUMBER has been updated to 2
-    assert readinglist_model.current_list_number == 2, f"Expected list number to be 2, but got {readinglist_model.current_list_number}"
+    # CURRENT_SELECTION_NUMBER updated to 2
+    assert readinglist_model.current_list_number == 2, \
+        f"Expected selection number to be 2, but got {readinglist_model.current_list_number}"
 
-    # Assert that update_play_count was called with the id of the first book
     mock_update_read_count.assert_called_once_with()
 
-    # Get the second book from the iterator (which will increment CURRENT_LIST_NUMBER back to 1)
     readinglist_model.read_current_book()
-
-    # Assert that CURRENT_LIST_NUMBER has been updated back to 1
-    assert readinglist_model.current_list_number == 1, f"Expected list number to be 1, but got {readinglist_model.current_list_number}"
-
-    # Assert that update_play_count was called with the id of the second book
+    assert readinglist_model.current_list_number == 1, \
+        f"Expected selection number to be 1, but got {readinglist_model.current_list_number}"
     mock_update_read_count.assert_called_with()
 
 
