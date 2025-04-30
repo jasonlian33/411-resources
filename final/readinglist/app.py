@@ -1227,13 +1227,13 @@ def create_app(config_class=ProductionConfig) -> Flask:
             app.logger.info("Received request to retrieve reading list length in books and length in pages.")
 
             readinglist_length = readinglist_model.get_readinglist_length()
-            readinglist_page_length = readinglist_model.get_readinglist_length()
+            readinglist_page_length = readinglist_model.get_readinglist_page_count()
 
             app.logger.info(f"Reading List contains {readinglist_length} books with a total length of {readinglist_page_length} pages.")
             return make_response(jsonify({
                 "status": "success",
                 "readinglist_length": readinglist_length,
-                "readinglist_length": readinglist_page_length
+                "readinglist_page_count": readinglist_page_length
             }), 200)
 
         except Exception as e:
