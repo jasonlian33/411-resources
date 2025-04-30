@@ -304,11 +304,11 @@ def test_validate_list_number_invalid(readinglist_model, list_number, expected_e
 
 
 ##################################################
-# Playback Test Cases
+# Reading Test Cases
 ##################################################
 
 
-def test_play_current_book(readinglist_model, sample_readinglist, mocker):
+def test_read_current_book(readinglist_model, sample_readinglist, mocker):
     """Test reading the current book."""
     mock_update_read_count = mocker.patch(
         "readinglist.models.readinglist_model.Books.update_read_count"
@@ -362,7 +362,7 @@ def test_go_to_random_list(readinglist_model, mocker):
 
 
 def test_read_entire_readinglist(readinglist_model, sample_readinglist, mocker):
-    """Test playing the entire readinglist."""
+    """Test reading the entire readinglist."""
     mock_update_read_count = mocker.patch("readinglist.models.readinglist_model.Books.update_read_count")
     mocker.patch("readinglist.models.readinglist_model.ReadinglistModel._get_book_from_cache_or_db", side_effect=sample_readinglist)
 
@@ -370,7 +370,7 @@ def test_read_entire_readinglist(readinglist_model, sample_readinglist, mocker):
 
     readinglist_model.read_entire_readinglist()
 
-    # Check that all play counts were updated
+    # Check that all read counts were updated
     mock_update_read_count.assert_any_call()
     assert mock_update_read_count.call_count == len(readinglist_model.readinglist)
 
@@ -379,7 +379,7 @@ def test_read_entire_readinglist(readinglist_model, sample_readinglist, mocker):
 
 
 def test_read_rest_of_readinglist(readinglist_model, sample_readinglist, mocker):
-    """Test playing from the current position to the end of the readinglist.
+    """Test Reading from the current position to the end of the readinglist.
 
     """
     mock_update_read_count = mocker.patch("readinglist.models.readinglist_model.Books.update_read_count")
@@ -390,7 +390,7 @@ def test_read_rest_of_readinglist(readinglist_model, sample_readinglist, mocker)
 
     readinglist_model.read_rest_of_readinglist()
 
-    # Check that play counts were updated for the remaining books
+    # Check that read counts were updated for the remaining books
     mock_update_read_count.assert_any_call()
     assert mock_update_read_count.call_count == 1
 
